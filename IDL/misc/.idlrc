@@ -1,0 +1,2 @@
+print, 'hola'
+!path = expand_path('+/home/vandal/git/sPydust/IDL/lib') + ':' + !path
