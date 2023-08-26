@@ -1,0 +1,1 @@
+hacer un login con postgres en tk o alguna wea similar
