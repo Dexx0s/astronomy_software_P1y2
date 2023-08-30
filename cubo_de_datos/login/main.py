@@ -28,7 +28,7 @@ Label(text="").pack()
 Label(text="").pack()
 Button(text="registrar usuario",fg="black",height="3",width="200").pack()
 Label(text="").pack()
-Button(text="Logear usuario",fg="black",height="3",width="200").pack()
+Button(text="Logear usuario",bg="oldlace",fg="black",height="3",width="200").pack()
 
 
 Login.mainloop()
