@@ -1,1 +1,24 @@
 hacer un login con postgres en tk o alguna wea similar
+
+-2) Ordenar repositorio
+
+-1) Revisar cubo de datos que no carga. Subir ejemplo a git. 
+
+0) Eje x del espectro cambiar unidades a frecuencia.
+
+1) agregar caja para elegir numero de plano (eje z) dentro del cubo
+  (e.g. 90)
+  
+2- barrita desplazadora
+
+3.1- agregar posibilidad de definir regiones:
+
+					- circulo  (x0, y0, R)
+					- elipse   (x0, y0, R_maj, R_min)
+					- cuadrado/rectangulo
+					- poligono a partir de puntos
+
+3.2- graficar espectro promediado para región
+
+4. realizar un ajuste de una curva a un sector del espectro.
+
