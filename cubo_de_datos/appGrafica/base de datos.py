@@ -1,3 +1,4 @@
+import numpy as np
 import tkinter as tk
 from tkinter import filedialog, messagebox, Toplevel
 from astropy.io import fits
@@ -6,7 +7,11 @@ from datetime import datetime
 import matplotlib
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import os
+import uuid
 
+data_id = str(uuid.uuid4())
+graphic_id = str(uuid.uuid4())
 matplotlib.use("TkAgg")
 
 # Variables globales
@@ -73,7 +78,6 @@ def cargar_siguiente_imagen():
 
 
 # Función para crear una ventana emergente para el gráfico
-# Función para crear una ventana emergente para el gráfico
 def crear_ventana_grafico():
     global ventana_grafico, figura_grafico, axes_grafico, canvas_grafico, ventana_grafico_abierta
     if not ventana_grafico_abierta:
@@ -98,8 +102,6 @@ def cerrar_ventana_grafico():
         ventana_grafico_abierta = False
 
 # Función para cargar un archivo FITS
-# Función para cargar un archivo FITS
-# Función para cargar un archivo FITS
 def abrir_archivo():
     global archivo_fits, hdul, datos_cubo, num_frames, boton_anterior, boton_siguiente, boton_graficar
 
@@ -115,19 +117,25 @@ def abrir_archivo():
             with fits.open(archivo_fits) as hdul:
                 # Con esto podemos verificar que se tomen archivos FITS segun PRYMARY, IMAGE, DATA CUBE y ESPECTRUM
                 extension_valida = None
+                nombre_archivo = os.path.basename(archivo_fits)
                 for ext in hdul:
                     if ext.name in ["PRIMARY", "IMAGE", "DATA CUBE", "SPECTRUM"]:
                         extension_valida = ext
-                        #Con esto buscamos la extension buscada, para abrir solo estas.
+                        # Con esto buscamos la extension buscada, para abrir solo estas.
                         break
 
                 if extension_valida is None:
                     raise ValueError("No es posible abrir este tipo de archivo FITS, dado que no contiene imágenes.")
 
+                if np.any(np.isnan(extension_valida.data)) or np.any(np.isinf(extension_valida.data)):
+                    raise ValueError("El archivo FITS contiene datos inválidos (NaN o infinitos).")
                 header = extension_valida.header
                 print(header)  # Imprimir el encabezado para ver la información
 
                 datos_cubo = extension_valida.data
+                tipo_extension = extension_valida.name
+                fecha_actual = datetime.now()
+
                 num_frames, num_rows, num_columns = datos_cubo.shape
                 print(f"Número de cuadros: {num_frames}")
                 print(f"Número de filas: {num_rows}")
@@ -139,22 +147,27 @@ def abrir_archivo():
                 # Habilitar el botón "Graficar"
                 boton_graficar.config(state=tk.NORMAL)
                 actualizar_etiqueta_coordenadas()  # Agregado para actualizar coordenadas al cargar el archivo
+
+                # Base de datos = File_Collection
                 file_info = {
-                    "data_id": None,  # Esto debe llenarse según tu lógica de negocio
-                    "file_name": archivo_fits,
-                    "username": None,  # Esto debe llenarse según tu lógica de negocio
+                    "Data_id": data_id,                          # Identificador
+                    "File_name": nombre_archivo,                 # File
+                    "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
+                    "Hora": fecha_actual.strftime("%H:%M:%S")    # Fecha segun Hora
                 }
                 file_collection.insert_one(file_info)
 
-                # Guardar información en Data_collection
+                # Base de datos = Data_Collection
                 data_info = {
-                    "filename": archivo_fits,
-                    "data": str(datos_cubo),
-                    "create_at": datetime.now(),
+                    "Data_id": data_id,                          # Identificador
+                    "Filename": nombre_archivo,                  # File
+                    "Header": tipo_extension,                    # Encabezado
+                    "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
+                    "Hora": fecha_actual.strftime("%H:%M:%S"),   # Fecha segun Hora
+                    "Data": str(datos_cubo)  # Datos
                 }
                 data_collection.insert_one(data_info)
 
-                # ... (Otros datos que desees guardar)
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo abrir el archivo FITS: {str(e)}")
             boton_graficar.config(state=tk.DISABLED)
@@ -196,10 +209,25 @@ def graficar():
                     # Actualiza el título del gráfico con las coordenadas
                     axes_grafico.set_title(f'Espectro del píxel ({x}, {y})')
                     figura_grafico.canvas.draw()
+                    fecha_actual = datetime.now()
+                    with fits.open(archivo_fits) as hdul:
+                        extension_valida = next(
+                            (ext for ext in hdul if ext.name in ["PRIMARY", "IMAGE", "DATA CUBE", "SPECTRUM"]), None)
+                        if extension_valida is None:
+                            raise ValueError(
+                                "No es posible abrir este tipo de archivo FITS, dado que no contiene imágenes.")
+
+                    # Base de datos = Graphics_Colletion
+                    tipo_extension = extension_valida.name
+                    selected_pixel = f"({x}, {y})"
                     graphics_info = {
-                        "filename": archivo_fits,
-                        "data": str(espectro),
-                        "create_at": datetime.now(),
+                        "Graphic_id": graphic_id,                     # Identificador unico
+                        "Header": tipo_extension,                     # Nombre archivo fits
+                        "Imagen": imagen_actual + 1,
+                        "Pixeles": selected_pixel,                    # Pixeles segun x e y
+                        "Fecha": fecha_actual.strftime("%d/%m/%Y"),   # Fecha segun día/mes/año
+                        "Hora": fecha_actual.strftime("%H:%M:%S"),    # Fecha segun Hora
+                        "Data": str(espectro)                         # Representacion de los datos
                     }
                     graphics_collection.insert_one(graphics_info)
 
