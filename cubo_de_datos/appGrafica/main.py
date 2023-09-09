@@ -1,11 +1,17 @@
+import numpy as np
 import tkinter as tk
 from tkinter import filedialog, messagebox, Toplevel
 from astropy.io import fits
-
+import pymongo
+from datetime import datetime
 import matplotlib
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import os
+import uuid
 
+data_id = str(uuid.uuid4())
+graphic_id = str(uuid.uuid4())
 matplotlib.use("TkAgg")
 
 # Variables globales
@@ -27,6 +33,18 @@ canvas = None
 linea_grafico = None  # Variable para almacenar la línea del gráfico
 barra_desplazamiento = None  # Variable para la barra de desplazamiento
 
+cliente = pymongo.MongoClient("mongodb://localhost:27017/")
+base_datos = cliente["Astronomy"]
+# File_collection
+file_collection = base_datos["File_collection"]
+# Data_collection
+data_collection = base_datos["Data_collection"]
+# Graphics
+graphics_collection = base_datos["Graphics"]
+# Comments
+comments_collection = base_datos["Comments"]
+
+
 # Función para cargar la imagen FITS actual
 def cargar_imagen_actual():
     global imagen_actual
@@ -36,11 +54,13 @@ def cargar_imagen_actual():
     canvas.draw()
     actualizar_etiqueta_coordenadas()
 
+
 # Función para actualizar la etiqueta de coordenadas
 def actualizar_etiqueta_coordenadas():
     global coordenadas_label
     if coordenadas_label is not None:
         coordenadas_label.config(text=f"Píxel Seleccionado: ({entrada_coord_x.get()}, {entrada_coord_y.get()})")
+
 
 # Función para cargar la imagen anterior
 def cargar_imagen_anterior():
@@ -49,6 +69,7 @@ def cargar_imagen_anterior():
         imagen_actual -= 1
         cargar_imagen_actual()
         actualizar_barra_desplazamiento()
+
 
 # Función para cargar la siguiente imagen
 def cargar_siguiente_imagen():
@@ -62,8 +83,8 @@ def cargar_siguiente_imagen():
 def cargar_imagen_desde_barra(event):
     global imagen_actual
     nueva_posicion = int(barra_desplazamiento.get())
-    if nueva_posicion >= 0 and nueva_posicion < num_frames:
-        imagen_actual = nueva_posicion
+    if nueva_posicion >= 1 and nueva_posicion <= num_frames:
+        imagen_actual = nueva_posicion - 1
         cargar_imagen_actual()
 
 # Función para crear una ventana emergente para el gráfico
@@ -77,6 +98,7 @@ def crear_ventana_grafico():
         canvas_grafico.get_tk_widget().pack()
         ventana_grafico.protocol("WM_DELETE_WINDOW", cerrar_ventana_grafico)
         ventana_grafico_abierta = True
+
 
 # Función para cerrar la ventana emergente del gráfico
 def cerrar_ventana_grafico():
@@ -101,24 +123,68 @@ def abrir_archivo():
 
     archivo_fits = filedialog.askopenfilename(filetypes=[("FITS files", "*.fits")])
     if archivo_fits:
-        with fits.open(archivo_fits) as hdul:
-            hdul.info()
-            datos_cubo = hdul['PRIMARY'].data
-            num_frames, num_rows, num_columns = datos_cubo.shape
-            print(f"Número de cuadros: {num_frames}")
-            print(f"Número de filas: {num_rows}")
-            print(f"Número de columnas: {num_columns}")
-            cargar_imagen_actual()  # Cargar la primera imagen
-            # Habilitar los botones "Anterior" y "Siguiente"
-            boton_anterior.config(state=tk.NORMAL)
-            boton_siguiente.config(state=tk.NORMAL)
-            # Habilitar el botón "Graficar"
-            boton_graficar.config(state=tk.NORMAL)
-            actualizar_etiqueta_coordenadas()  # Agregado para actualizar coordenadas al cargar el archivo
-            actualizar_barra_desplazamiento()
+        try:
+            with fits.open(archivo_fits) as hdul:
+                # Con esto podemos verificar que se tomen archivos FITS segun PRYMARY, IMAGE, DATA CUBE y ESPECTRUM
+                extension_valida = None
+                nombre_archivo = os.path.basename(archivo_fits)
+                for ext in hdul:
+                    if ext.name in ["PRIMARY", "IMAGE", "DATA CUBE", "SPECTRUM"]:
+                        extension_valida = ext
+                        # Con esto buscamos la extension buscada, para abrir solo estas.
+                        break
+
+                if extension_valida is None:
+                    raise ValueError("No es posible abrir este tipo de archivo FITS, dado que no contiene imágenes.")
+
+                if np.any(np.isnan(extension_valida.data)) or np.any(np.isinf(extension_valida.data)):
+                    raise ValueError("El archivo FITS contiene datos inválidos (NaN o infinitos).")
+                header = extension_valida.header
+                print(header)  # Imprimir el encabezado para ver la información
+
+                datos_cubo = extension_valida.data
+                tipo_extension = extension_valida.name
+                fecha_actual = datetime.now()
+
+                num_frames, num_rows, num_columns = datos_cubo.shape
+                print(f"Número de cuadros: {num_frames}")
+                print(f"Número de filas: {num_rows}")
+                print(f"Número de columnas: {num_columns}")
+                cargar_imagen_actual()  # Cargar la primera imagen
+                # Habilitar los botones "Anterior" y "Siguiente"
+                boton_anterior.config(state=tk.NORMAL)
+                boton_siguiente.config(state=tk.NORMAL)
+                # Habilitar el botón "Graficar"
+                boton_graficar.config(state=tk.NORMAL)
+                actualizar_etiqueta_coordenadas()  # Agregado para actualizar coordenadas al cargar el archivo
+                actualizar_barra_desplazamiento()
+                # Base de datos = File_Collection
+                file_info = {
+                    "Data_id": data_id,                          # Identificador
+                    "File_name": nombre_archivo,                 # File
+                    "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
+                    "Hora": fecha_actual.strftime("%H:%M:%S")    # Fecha segun Hora
+                }
+                file_collection.insert_one(file_info)
+
+                # Base de datos = Data_Collection
+                data_info = {
+                    "Data_id": data_id,                          # Identificador
+                    "Filename": nombre_archivo,                  # File
+                    "Header": tipo_extension,                    # Encabezado
+                    "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
+                    "Hora": fecha_actual.strftime("%H:%M:%S"),   # Fecha segun Hora
+                    "Data": str(datos_cubo)  # Datos
+                }
+                data_collection.insert_one(data_info)
+
+        except Exception as e:
+            messagebox.showerror("Error", f"No se pudo abrir el archivo FITS: {str(e)}")
+            boton_graficar.config(state=tk.DISABLED)
     else:
         # Si no se selecciona un archivo FITS válido, deshabilita el botón "Graficar"
         boton_graficar.config(state=tk.DISABLED)
+
 
 # Función para graficar el espectro del píxel seleccionado
 def graficar():
@@ -153,6 +219,28 @@ def graficar():
                     # Actualiza el título del gráfico con las coordenadas
                     axes_grafico.set_title(f'Espectro del píxel ({x}, {y})')
                     figura_grafico.canvas.draw()
+                    fecha_actual = datetime.now()
+                    with fits.open(archivo_fits) as hdul:
+                        extension_valida = next(
+                            (ext for ext in hdul if ext.name in ["PRIMARY", "IMAGE", "DATA CUBE", "SPECTRUM"]), None)
+                        if extension_valida is None:
+                            raise ValueError(
+                                "No es posible abrir este tipo de archivo FITS, dado que no contiene imágenes.")
+
+                    # Base de datos = Graphics_Colletion
+                    tipo_extension = extension_valida.name
+                    selected_pixel = f"({x}, {y})"
+                    graphics_info = {
+                        "Graphic_id": graphic_id,                     # Identificador unico
+                        "Header": tipo_extension,                     # Nombre archivo fits
+                        "Imagen": imagen_actual + 1,
+                        "Pixeles": selected_pixel,                    # Pixeles segun x e y
+                        "Fecha": fecha_actual.strftime("%d/%m/%Y"),   # Fecha segun día/mes/año
+                        "Hora": fecha_actual.strftime("%H:%M:%S"),    # Fecha segun Hora
+                        "Data": str(espectro)                         # Representacion de los datos
+                    }
+                    graphics_collection.insert_one(graphics_info)
+
                 else:
                     messagebox.showerror("Error", "Coordenadas fuera de los límites de la imagen.")
             else:
@@ -176,6 +264,7 @@ def on_image_click(event):
         graficar()
 
         actualizar_etiqueta_coordenadas()
+
 
 # Función para manejar el evento de zoom con la rueda del ratón
 def on_scroll(event):
@@ -204,19 +293,18 @@ def on_scroll(event):
 
         except Exception as e:
             print(f"Error en el zoom: {e}")
-
 # Función para actualizar la barra de desplazamiento
 def actualizar_barra_desplazamiento():
     global barra_desplazamiento, num_frames
     if barra_desplazamiento is not None:
-        barra_desplazamiento.config(from_=0, to=num_frames - 1)
-        barra_desplazamiento.set(imagen_actual)
+        barra_desplazamiento.config(from_=1, to=num_frames, command=cargar_imagen_desde_barra)
+        barra_desplazamiento.set(imagen_actual + 1)
 
 def cerrar_ventana_principal():
     ventana.quit()  # Finalizar el bucle principal de Tkinter
     ventana.destroy()  # Destruir la ventana principal
 
-# Crear ventana principal
+
 ventana = tk.Tk()
 ventana.title("Cargar Archivos Fits")
 ventana.geometry("650x900")
@@ -246,10 +334,10 @@ entrada_coord_y.grid(row=1, column=4, padx=5, pady=5)
 
 boton_graficar = tk.Button(ventana, text="Graficar", command=graficar, bg="green", fg="white", state=tk.DISABLED)
 boton_graficar.grid(row=2, column=0, columnspan=5, padx=5, pady=10)
-#boton anterior
+
 boton_anterior = tk.Button(ventana, text="Anterior", command=cargar_imagen_anterior, state=tk.DISABLED)
 boton_anterior.grid(row=3, column=0, padx=5, pady=5)
-#boton siguiente
+
 boton_siguiente = tk.Button(ventana, text="Siguiente", command=cargar_siguiente_imagen, state=tk.DISABLED)
 boton_siguiente.grid(row=3, column=4, padx=5, pady=5)
 
@@ -262,10 +350,15 @@ fig, ax = plt.subplots(figsize=(6, 6))
 canvas = FigureCanvasTkAgg(fig, master=ventana)
 canvas.get_tk_widget().grid(row=4, column=0, columnspan=5, padx=5, pady=10)
 
+
 # Conectar la función on_scroll al evento de desplazamiento de la rueda del ratón
 fig.canvas.mpl_connect('scroll_event', on_scroll)
 
 # Configurar el evento de clic del ratón en la imagen
 fig.canvas.mpl_connect('button_press_event', on_image_click)
+
+# Configurar el evento de clic del ratón en la imagen
+fig.canvas.mpl_connect('button_press_event', on_image_click)
+
 
 ventana.mainloop()
