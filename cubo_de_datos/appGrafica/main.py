@@ -48,6 +48,7 @@ def cargar_imagen_anterior():
     if imagen_actual > 0:
         imagen_actual -= 1
         cargar_imagen_actual()
+        actualizar_barra_desplazamiento()
 
 # Función para cargar la siguiente imagen
 def cargar_siguiente_imagen():
@@ -55,6 +56,7 @@ def cargar_siguiente_imagen():
     if imagen_actual < num_frames - 1:
         imagen_actual += 1
         cargar_imagen_actual()
+        actualizar_barra_desplazamiento()
 
 # Función para cargar la imagen actual en función del valor de la barra de desplazamiento
 def cargar_imagen_desde_barra(event):
@@ -217,7 +219,7 @@ def cerrar_ventana_principal():
 # Crear ventana principal
 ventana = tk.Tk()
 ventana.title("Cargar Archivos Fits")
-ventana.geometry("800x700")
+ventana.geometry("650x900")
 
 ventana.protocol("WM_DELETE_WINDOW", cerrar_ventana_principal)
 
@@ -244,10 +246,10 @@ entrada_coord_y.grid(row=1, column=4, padx=5, pady=5)
 
 boton_graficar = tk.Button(ventana, text="Graficar", command=graficar, bg="green", fg="white", state=tk.DISABLED)
 boton_graficar.grid(row=2, column=0, columnspan=5, padx=5, pady=10)
-
+#boton anterior
 boton_anterior = tk.Button(ventana, text="Anterior", command=cargar_imagen_anterior, state=tk.DISABLED)
 boton_anterior.grid(row=3, column=0, padx=5, pady=5)
-
+#boton siguiente
 boton_siguiente = tk.Button(ventana, text="Siguiente", command=cargar_siguiente_imagen, state=tk.DISABLED)
 boton_siguiente.grid(row=3, column=4, padx=5, pady=5)
 

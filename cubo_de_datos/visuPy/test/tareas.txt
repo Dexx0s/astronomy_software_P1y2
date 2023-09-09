@@ -1,5 +1,3 @@
-hacer un login con postgres en tk o alguna wea similar
-
 -2) Ordenar repositorio
 
 -1) Revisar cubo de datos que no carga. Subir ejemplo a git. 
