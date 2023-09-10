@@ -26,6 +26,9 @@ entrada_coord_y = None
 ventana_grafico = None  # Ventana para el gráfico
 ventana_grafico_abierta = False
 
+# Variables para el seguimiento del arrastre del ratón
+dragging = False
+
 # Variables relacionadas con Matplotlib
 fig = None
 ax = None
@@ -110,6 +113,48 @@ def cerrar_ventana_grafico():
         axes_grafico = figura_grafico.add_subplot(111)
         figura_grafico.canvas.draw()
         ventana_grafico_abierta = False
+
+def iniciar_arrastre(event):
+    global dragging
+    dragging = True
+    # Guardar las coordenadas iniciales del ratón
+    global last_mouse_x, last_mouse_y
+    last_mouse_x = event.x
+    last_mouse_y = event.y
+
+def detener_arrastre(event):
+    global dragging
+    dragging = False
+
+# Función para manejar el arrastre de la imagen
+def mover_imagen(event):
+    global dragging, last_mouse_x, last_mouse_y
+    if dragging:
+        # Calcular el desplazamiento del ratón
+        dx = (event.x - last_mouse_x) * 0.1  # Ajusta este factor según tu preferencia
+        dy = (event.y - last_mouse_y) * 0.1  # Ajusta este factor según tu preferencia
+
+        # Obtener los límites actuales de los ejes
+        x_min, x_max = ax.get_xlim()
+        y_min, y_max = ax.get_ylim()
+
+        # Actualizar los límites de los ejes con el desplazamiento
+        new_x_min = x_min - dx
+        new_x_max = x_max - dx
+        new_y_min = y_min - dy
+        new_y_max = y_max - dy
+
+        # Establecer los nuevos límites de los ejes
+        ax.set_xlim(new_x_min, new_x_max)
+        ax.set_ylim(new_y_min, new_y_max)
+
+        canvas.draw()
+
+        # Actualizar las coordenadas del ratón
+        last_mouse_x = event.x
+        last_mouse_y = event.y
+
+
 
 # Función para cargar un archivo FITS
 def abrir_archivo():
@@ -350,6 +395,10 @@ fig, ax = plt.subplots(figsize=(6, 6))
 canvas = FigureCanvasTkAgg(fig, master=ventana)
 canvas.get_tk_widget().grid(row=4, column=0, columnspan=5, padx=5, pady=10)
 
+# Conectar eventos del ratón para el arrastre
+canvas.get_tk_widget().bind("<ButtonPress-1>", iniciar_arrastre)
+canvas.get_tk_widget().bind("<B1-Motion>", mover_imagen)
+canvas.get_tk_widget().bind("<ButtonRelease-1>", detener_arrastre)
 
 # Conectar la función on_scroll al evento de desplazamiento de la rueda del ratón
 fig.canvas.mpl_connect('scroll_event', on_scroll)
