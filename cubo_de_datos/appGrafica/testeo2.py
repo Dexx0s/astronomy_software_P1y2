@@ -310,7 +310,7 @@ def graficar():
         except ValueError:
             messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
 
-# Función para manejar el clic del ratón en la imagen
+# Cambia esta parte en la función on_image_click
 def on_image_click(event):
     global centro_x, centro_y, radio, circulo_dibujado, pixel_activado, movimiento_activado, circulo_activado, dibujando_circulo, ultimo_clic
     if circulo_activado and (pixel_activado == False and movimiento_activado == False) and event.x and event.y:
@@ -337,9 +337,14 @@ def on_image_click(event):
                 # Restablece las variables del círculo después de dibujarlo
                 centro_x, centro_y, radio = None, None, None
 
-    elif pixel_activado and datos_cubo is not None and event.xdata is not None and event.ydata is not None:
-        # Verifica si está activada la opción "Pixel" y se hizo clic izquierdo
-        x, y = int(event.xdata), int(event.ydata)
+
+    elif pixel_activado and datos_cubo is not None:
+
+        # Obtén las coordenadas de datos a partir de las coordenadas del evento
+
+        coords_data = ax.transData.inverted().transform((event.x, event.y))
+
+        x, y = int(coords_data[0]), int(coords_data[1])
 
         # Actualizar las entradas de las coordenadas
         entrada_coord_x.delete(0, tk.END)
