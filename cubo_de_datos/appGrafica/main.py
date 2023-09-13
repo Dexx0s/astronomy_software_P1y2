@@ -47,6 +47,9 @@ graphics_collection = base_datos["Graphics"]
 # Comments
 comments_collection = base_datos["Comments"]
 
+# poner 1 para activar base de datos
+switch_pymongo=0
+
 
 # Función para cargar la imagen FITS actual
 def cargar_imagen_actual():
@@ -156,6 +159,16 @@ def mover_imagen(event):
 
 
 
+def remove_nans(fitsfile):
+
+    nhdulist = fits.open(fitsfile)
+    #hdulist.info() 
+    #np.isnan(hdulist[1].data).all()
+    
+    nans=np.where(np.isnan(hdulist[1].data))
+    hdulist[1].data[nans]=0
+    return hdulist[1].data
+
 # Función para cargar un archivo FITS
 def abrir_archivo():
     global archivo_fits, hdul, datos_cubo, num_frames, boton_anterior, boton_siguiente, boton_graficar
@@ -184,6 +197,7 @@ def abrir_archivo():
 
                 if np.any(np.isnan(extension_valida.data)) or np.any(np.isinf(extension_valida.data)):
                     raise ValueError("El archivo FITS contiene datos inválidos (NaN o infinitos).")
+                ## agregar dialogo para preguntando si se quiere reemplazar NaNs por 0
                 header = extension_valida.header
                 print(header)  # Imprimir el encabezado para ver la información
 
@@ -203,25 +217,27 @@ def abrir_archivo():
                 boton_graficar.config(state=tk.NORMAL)
                 actualizar_etiqueta_coordenadas()  # Agregado para actualizar coordenadas al cargar el archivo
                 actualizar_barra_desplazamiento()
-                # Base de datos = File_Collection
-                file_info = {
-                    "Data_id": data_id,                          # Identificador
-                    "File_name": nombre_archivo,                 # File
-                    "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
-                    "Hora": fecha_actual.strftime("%H:%M:%S")    # Fecha segun Hora
-                }
-                file_collection.insert_one(file_info)
 
-                # Base de datos = Data_Collection
-                data_info = {
-                    "Data_id": data_id,                          # Identificador
-                    "Filename": nombre_archivo,                  # File
-                    "Header": tipo_extension,                    # Encabezado
-                    "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
-                    "Hora": fecha_actual.strftime("%H:%M:%S"),   # Fecha segun Hora
-                    "Data": str(datos_cubo)  # Datos
-                }
-                data_collection.insert_one(data_info)
+                if switch_pymongo:
+                    # Base de datos = File_Collection
+                    file_info = {
+                        "Data_id": data_id,                          # Identificador
+                        "File_name": nombre_archivo,                 # File
+                        "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
+                        "Hora": fecha_actual.strftime("%H:%M:%S")    # Fecha segun Hora
+                    }
+                    file_collection.insert_one(file_info)
+                    
+                    # Base de datos = Data_Collection
+                    data_info = {
+                        "Data_id": data_id,                          # Identificador
+                        "Filename": nombre_archivo,                  # File
+                        "Header": tipo_extension,                    # Encabezado
+                        "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
+                        "Hora": fecha_actual.strftime("%H:%M:%S"),   # Fecha segun Hora
+                        "Data": str(datos_cubo)  # Datos
+                    }
+                    data_collection.insert_one(data_info)
 
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo abrir el archivo FITS: {str(e)}")
@@ -230,6 +246,33 @@ def abrir_archivo():
         # Si no se selecciona un archivo FITS válido, deshabilita el botón "Graficar"
         boton_graficar.config(state=tk.DISABLED)
 
+
+
+
+# tipos de regiones
+# punto (default) , circulo (C),elipse (E), rectangulo (R), poligono (P) . Usar teclas preferentemente ()
+
+# interaccion con teclado/mouse para definir regiones
+
+# seleccionar pixeles dentro de region o mascara
+# para circulo ver esto: https://stackoverflow.com/questions/44865023/how-can-i-create-a-circular-mask-for-a-numpy-array
+# o tambien esta pagina https://saturncloud.io/blog/creating-a-circular-mask-for-a-numpy-array-a-comprehensive-guide/
+
+# a partir de region, producir un espectro
+#     punto ya esta casi listo
+#    # Obtener las coordenadas del píxel desde las entradas
+#             x_str = entrada_coord_x.get()
+#             y_str = entrada_coord_y.get()
+
+#             # Verificar que las coordenadas estén dentro de los límites
+#             if x_str and y_str:
+#                 x = int(x_str)
+#                 y = int(y_str)
+#                 if 0 <= x < datos_cubo.shape[2] and 0 <= y < datos_cubo.shape[1]:
+#                     espectro = datos_cubo[:, y, x]
+
+# modificar funcion graficar para que reciba un espectro
+# def graficar(espectro):
 
 # Función para graficar el espectro del píxel seleccionado
 def graficar():
@@ -272,19 +315,20 @@ def graficar():
                             raise ValueError(
                                 "No es posible abrir este tipo de archivo FITS, dado que no contiene imágenes.")
 
-                    # Base de datos = Graphics_Colletion
-                    tipo_extension = extension_valida.name
-                    selected_pixel = f"({x}, {y})"
-                    graphics_info = {
-                        "Graphic_id": graphic_id,                     # Identificador unico
-                        "Header": tipo_extension,                     # Nombre archivo fits
-                        "Imagen": imagen_actual + 1,
-                        "Pixeles": selected_pixel,                    # Pixeles segun x e y
-                        "Fecha": fecha_actual.strftime("%d/%m/%Y"),   # Fecha segun día/mes/año
-                        "Hora": fecha_actual.strftime("%H:%M:%S"),    # Fecha segun Hora
-                        "Data": str(espectro)                         # Representacion de los datos
-                    }
-                    graphics_collection.insert_one(graphics_info)
+                    if switch_pymongo:
+                        # Base de datos = Graphics_Colletion
+                        tipo_extension = extension_valida.name
+                        selected_pixel = f"({x}, {y})"
+                        graphics_info = {
+                            "Graphic_id": graphic_id,                     # Identificador unico
+                            "Header": tipo_extension,                     # Nombre archivo fits
+                            "Imagen": imagen_actual + 1,
+                            "Pixeles": selected_pixel,                    # Pixeles segun x e y
+                            "Fecha": fecha_actual.strftime("%d/%m/%Y"),   # Fecha segun día/mes/año
+                            "Hora": fecha_actual.strftime("%H:%M:%S"),    # Fecha segun Hora
+                            "Data": str(espectro)                         # Representacion de los datos
+                        }
+                        graphics_collection.insert_one(graphics_info)
 
                 else:
                     messagebox.showerror("Error", "Coordenadas fuera de los límites de la imagen.")
