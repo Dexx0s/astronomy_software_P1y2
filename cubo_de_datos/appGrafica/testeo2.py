@@ -369,15 +369,15 @@ def on_image_click(event):
 
 # Nueva función para cambiar el tamaño del círculo
 def actualizar_radio(val):
-    global radio
+    global radio, ultimo_circulo
     radio = float(val)
-    for circulo in circulos_dibujados:
-        circulo.set_radius(radio)
-    canvas.draw()
+    if ultimo_circulo is not None:
+        ultimo_circulo.set_radius(radio)
+        canvas.draw()
 
 # Función para dibujar un círculo en el subplot de Matplotlib
 def dibujar_circulo(event):
-    global radio
+    global radio, ultimo_circulo
 
     if circulo_activado and event.xdata is not None and event.ydata is not None:
         x, y = event.xdata, event.ydata
@@ -385,6 +385,7 @@ def dibujar_circulo(event):
         circulo = Circle((x, y), radio, color='red', fill=False)
         ax.add_patch(circulo)
         circulos_dibujados.append(circulo)  # Agrega el círculo a la lista de círculos dibujados
+        ultimo_circulo = circulo  # Actualiza el último círculo dibujado
 
     canvas.draw()
 
