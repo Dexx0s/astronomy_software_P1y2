@@ -10,6 +10,9 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import os
 import uuid
 from matplotlib.patches import Circle
+from matplotlib.figure import Figure
+from tkinter import Scale
+
 
 data_id = str(uuid.uuid4())
 graphic_id = str(uuid.uuid4())
@@ -30,27 +33,34 @@ last_mouse_x = 0
 last_mouse_y = 0
 movimiento_activado = False  # Variable para rastrear el estado del movimiento
 pixel_activado = False  # Variable para rastrear el estado de la opción "Pixel"
-circulo_activado = False  # Variable para rastrear el estado de la opción "Circulo"
+circulo_activado = False  # Variable para rastrear el estado de la opción "Círculo"
 eclipse_activado = False  # Variable para rastrear el estado del movimiento
 cuadrado_activado = False  # Variable para rastrear el estado de la opción "Pixel"
-area_activado = False  # Variable para rastrear el estado de la opción "Circulo"
+area_activado = False  # Variable para rastrear el estado de la opción "Círculo"
 ultimo_clic = None
 
 # Variables para el seguimiento del arrastre del ratón
 dragging = False
 
+
+
 # Variables relacionadas con Matplotlib
 fig = None
 ax = None
 canvas = None
-linea_grafico = None  # Variable para almacenar la línea del gráfico
-barra_desplazamiento = None  # Variable para la barra de desplazamiento
+linea_grafico = None
+barra_desplazamiento = None
+circulos_dibujados = []  # Lista para almacenar los círculos dibujados
+radio_scale = None  # Variable para el scrollbar del radio del círculo
+radio = 5  # Valor predeterminado del radio del círculo
+ultimo_circulo = None  # Variable para el último círculo dibujado
 
 # Variables para el circulo
 centro_x, centro_y = None, None
-radio = None
 dibujando_circulo = False
 circulo_dibujado = None
+
+
 
 
 cliente = pymongo.MongoClient("mongodb://localhost:27017/")
@@ -357,31 +367,33 @@ def on_image_click(event):
 
         actualizar_etiqueta_coordenadas()
 
+# Nueva función para cambiar el tamaño del círculo
 def actualizar_radio(val):
     global radio
     radio = float(val)
-    if circulo_dibujado is not None:
-        circulo_dibujado.remove()
-        dibujar_circulo(None)
-
+    for circulo in circulos_dibujados:
+        circulo.set_radius(radio)
+    canvas.draw()
 
 # Función para dibujar un círculo en el subplot de Matplotlib
 def dibujar_circulo(event):
-    global circulo_dibujado
-
-    if circulo_dibujado is not None:
-        # Elimina el círculo dibujado anteriormente
-        circulo_dibujado.remove()
+    global radio
 
     if circulo_activado and event.xdata is not None and event.ydata is not None:
         x, y = event.xdata, event.ydata
         radio = 5  # Puedes ajustar el tamaño del círculo según tus preferencias
         circulo = Circle((x, y), radio, color='red', fill=False)
         ax.add_patch(circulo)
-        canvas.draw()
+        circulos_dibujados.append(circulo)  # Agrega el círculo a la lista de círculos dibujados
 
-        # Almacena el círculo recién dibujado
-        circulo_dibujado = circulo
+    canvas.draw()
+
+# Función para borrar todos los círculos dibujados
+def borrar_circulos():
+    for circulo in circulos_dibujados:
+        circulo.remove()
+    circulos_dibujados.clear()  # Limpia la lista de círculos dibujados
+    canvas.draw()
 
 def on_canvas_click(event):
     if event.button == 3:  # Verificar si es un clic derecho
@@ -453,14 +465,18 @@ def toggle_pixel():
     cuadrado_activado = False
     area_activado = False
 
+# Nueva función para cambiar el estado de la opción "Círculo"
 def toggle_circulo():
-    global pixel_activado, movimiento_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado,circulo_dibujado
+    global pixel_activado, movimiento_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado
     circulo_activado = not circulo_activado
     movimiento_activado = False
     pixel_activado = False
     eclipse_activado = False
     cuadrado_activado = False
     area_activado = False
+    # Si desactivas la opción "Círculo", borra todos los círculos dibujados
+    if not circulo_activado:
+        borrar_circulos()
 
 def toggle_eclipse():
     global pixel_activado, movimiento_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado
@@ -568,10 +584,16 @@ boton_siguiente.grid(row=3, column=4, padx=5, pady=5)
 barra_desplazamiento = tk.Scale(ventana, orient="horizontal", command=cargar_imagen_desde_barra)
 barra_desplazamiento.grid(row=3, column=1, columnspan=3, padx=5, pady=5, sticky="ew")
 
+# Crear un botón para borrar círculos
+boton_borrar_circulos = tk.Button(ventana, text="Borrar Círculos", command=borrar_circulos)
+boton_borrar_circulos.grid(row=3, column=6, padx=5, pady=10)  # Ajusta la ubicación del botón
+
 # Crear una figura de Matplotlib y canvas
-fig, ax = plt.subplots(figsize=(6, 6))
+fig = Figure(figsize=(6, 6))
+ax = fig.add_subplot(111)
 canvas = FigureCanvasTkAgg(fig, master=ventana)
 canvas.get_tk_widget().grid(row=4, column=0, columnspan=5, padx=5, pady=10)
+
 
 # Conectar eventos del ratón para el arrastre
 #canvas.get_tk_widget().bind("<ButtonPress-1>", iniciar_arrastre)
@@ -592,5 +614,10 @@ fig.canvas.mpl_connect('button_press_event', on_image_click)
 
 # Configurar el evento de clic izquierdo en el canvas para dibujar un círculo
 canvas.mpl_connect('button_press_event', dibujar_circulo)
+
+# Nueva función para cambiar el tamaño del círculo
+radio_scale = Scale(ventana, from_=1, to=100, orient="horizontal", label="Tamaño del Círculo", command=actualizar_radio)
+radio_scale.grid(row=3, column=5, padx=5, pady=10)  # Cambia row a 3 y column a 5
+
 
 ventana.mainloop()
