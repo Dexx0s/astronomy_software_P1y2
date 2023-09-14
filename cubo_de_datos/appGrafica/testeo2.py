@@ -396,6 +396,18 @@ def borrar_circulos():
     circulos_dibujados.clear()  # Limpia la lista de círculos dibujados
     canvas.draw()
 
+
+# Nueva función para borrar el último círculo dibujado
+def borrar_ultimo_circulo():
+    global circulos_dibujados, ultimo_circulo
+    if circulos_dibujados:
+        ultimo_circulo.remove()
+        circulos_dibujados.pop()  # Elimina el último círculo de la lista
+        if circulos_dibujados:  # Si todavía hay círculos en la lista, actualiza el último círculo
+            ultimo_circulo = circulos_dibujados[-1]
+        else:
+            ultimo_circulo = None  # Si no hay más círculos, establece el último_círculo a None
+        canvas.draw()
 def on_canvas_click(event):
     if event.button == 3:  # Verificar si es un clic derecho
         abrir_menu_desplegable(event)
@@ -588,6 +600,10 @@ barra_desplazamiento.grid(row=3, column=1, columnspan=3, padx=5, pady=5, sticky=
 # Crear un botón para borrar círculos
 boton_borrar_circulos = tk.Button(ventana, text="Borrar Círculos", command=borrar_circulos)
 boton_borrar_circulos.grid(row=3, column=6, padx=5, pady=10)  # Ajusta la ubicación del botón
+
+# Crear un botón para borrar el último círculo dibujado
+boton_borrar_ultimo_circulo = tk.Button(ventana, text="Borrar Último Círculo", command=borrar_ultimo_circulo)
+boton_borrar_ultimo_circulo.grid(row=3, column=7, padx=5, pady=10)  # Ajusta la ubicación del botón
 
 # Crear una figura de Matplotlib y canvas
 fig = Figure(figsize=(6, 6))
