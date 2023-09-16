@@ -181,6 +181,11 @@ def mover_imagen(event):
         last_mouse_x = event.x
         last_mouse_y = event.y
 
+def remove_nans(extension_valida):
+    hdul = fits.open(archivo_fits, ext=2)
+    extension_valida.data[np.isnan(extension_valida.data)] = 0
+    extension_valida.data[np.isinf(extension_valida.data)] = 0
+
 
 
 # Función para cargar un archivo FITS
@@ -196,59 +201,66 @@ def abrir_archivo():
     archivo_fits = filedialog.askopenfilename(filetypes=[("FITS files", "*.fits")])
     if archivo_fits:
         try:
-            with fits.open(archivo_fits) as hdul:
-                # Con esto podemos verificar que se tomen archivos FITS segun PRYMARY, IMAGE, DATA CUBE y ESPECTRUM
-                extension_valida = None
-                nombre_archivo = os.path.basename(archivo_fits)
-                for ext in hdul:
-                    if ext.name in ["PRIMARY", "IMAGE", "DATA CUBE", "SPECTRUM"]:
-                        extension_valida = ext
-                        # Con esto buscamos la extension buscada, para abrir solo estas.
-                        break
+            # Abrir el archivo FITS
+            hdul = fits.open(archivo_fits, ext=1)
+            # Con esto podemos verificar que se tomen archivos FITS segun PRYMARY, IMAGE, DATA CUBE y ESPECTRUM
+            extension_valida = None
+            nombre_archivo = os.path.basename(archivo_fits)
 
-                if extension_valida is None:
-                    raise ValueError("No es posible abrir este tipo de archivo FITS, dado que no contiene imágenes.")
+            for ext in hdul:
+                if ext.name in ["PRIMARY", "IMAGE", "DATA CUBE", "SPECTRUM", "STANDARD"]:
+                    extension_valida = ext
+                    # Con esto buscamos la extension buscada, para abrir solo estas.
+                    break
 
-                if np.any(np.isnan(extension_valida.data)) or np.any(np.isinf(extension_valida.data)):
-                    raise ValueError("El archivo FITS contiene datos inválidos (NaN o infinitos).")
-                header = extension_valida.header
-                print(header)  # Imprimir el encabezado para ver la información
+            if extension_valida is None:
+                raise ValueError("No es posible abrir este tipo de archivo FITS, dado que no contiene imágenes.")
 
-                datos_cubo = extension_valida.data
-                tipo_extension = extension_valida.name
-                fecha_actual = datetime.now()
+            if np.any(np.isnan(extension_valida.data)) or np.any(np.isinf(extension_valida.data)):
+                respuesta = messagebox.askquestion("Datos Inválidos",
+                                                   "El archivo FITS contiene datos inválidos (NaN o infinitos). ¿Desea convertirlos a 0?")
 
-                num_frames, num_rows, num_columns = datos_cubo.shape
-                print(f"Número de cuadros: {num_frames}")
-                print(f"Número de filas: {num_rows}")
-                print(f"Número de columnas: {num_columns}")
-                cargar_imagen_actual()  # Cargar la primera imagen
-                # Habilitar los botones "Anterior" y "Siguiente"
-                boton_anterior.config(state=tk.NORMAL)
-                boton_siguiente.config(state=tk.NORMAL)
-                # Habilitar el botón "Graficar"
-                boton_graficar.config(state=tk.NORMAL)
-                actualizar_etiqueta_coordenadas()  # Agregado para actualizar coordenadas al cargar el archivo
-                actualizar_barra_desplazamiento()
-                # Base de datos = File_Collection
-                file_info = {
-                    "Data_id": data_id,                          # Identificador
-                    "File_name": nombre_archivo,                 # File
-                    "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
-                    "Hora": fecha_actual.strftime("%H:%M:%S")    # Fecha segun Hora
-                }
-                file_collection.insert_one(file_info)
+                if respuesta == 'yes':
+                    data = remove_nans(extension_valida)
 
-                # Base de datos = Data_Collection
-                data_info = {
-                    "Data_id": data_id,                          # Identificador
-                    "Filename": nombre_archivo,                  # File
-                    "Header": tipo_extension,                    # Encabezado
-                    "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
-                    "Hora": fecha_actual.strftime("%H:%M:%S"),   # Fecha segun Hora
-                    "Data": str(datos_cubo)  # Datos
-                }
-                data_collection.insert_one(data_info)
+            header = extension_valida.header
+            print(header)  # Imprimir el encabezado para ver la información
+
+            datos_cubo = extension_valida.data
+            tipo_extension = extension_valida.name
+            fecha_actual = datetime.now()
+
+            num_frames, num_rows, num_columns = datos_cubo.shape
+            print(f"Número de cuadros: {num_frames}")
+            print(f"Número de filas: {num_rows}")
+            print(f"Número de columnas: {num_columns}")
+            cargar_imagen_actual()  # Cargar la primera imagen
+            # Habilitar los botones "Anterior" y "Siguiente"
+            boton_anterior.config(state=tk.NORMAL)
+            boton_siguiente.config(state=tk.NORMAL)
+            # Habilitar el botón "Graficar"
+            boton_graficar.config(state=tk.NORMAL)
+            actualizar_etiqueta_coordenadas()  # Agregado para actualizar coordenadas al cargar el archivo
+            actualizar_barra_desplazamiento()
+            # Base de datos = File_Collection
+            file_info = {
+                "Data_id": data_id,                          # Identificador
+                "File_name": nombre_archivo,                 # File
+                "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
+                "Hora": fecha_actual.strftime("%H:%M:%S")    # Fecha segun Hora
+            }
+            file_collection.insert_one(file_info)
+
+            # Base de datos = Data_Collection
+            data_info = {
+                "Data_id": data_id,                          # Identificador
+                "Filename": nombre_archivo,                  # File
+                "Header": tipo_extension,                    # Encabezado
+                "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
+                "Hora": fecha_actual.strftime("%H:%M:%S"),   # Fecha segun Hora
+                "Data": str(datos_cubo)  # Datos
+            }
+            data_collection.insert_one(data_info)
 
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo abrir el archivo FITS: {str(e)}")
