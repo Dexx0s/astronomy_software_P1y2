@@ -59,7 +59,8 @@ ultimo_circulo = None  # Variable para el último círculo dibujado
 e_inicio = None
 e_fin = None
 ultima_elipse = None
-elipse_dibujada = None
+s_x = 1.0
+s_y = 1.0
 elipses_dibujadas = []  # Lista para almacenar los círculos dibujados
 
 # Variables para el circulo
@@ -339,31 +340,6 @@ def graficar():
             messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
 
 
-def on_image_click_elipse(event):
-    # Global Elipse
-    global c_x, c_y, s_x, s_y, elipse_dibujada, pixel_activado, movimiento_activado, eclipse_activado, dibujando_elipse, ultimo_clic
-
-    # Mecanismo para elipse
-    if eclipse_activado and (pixel_activado is False and movimiento_activado is False) and event.x and event.y:
-        if ultimo_clic == (event.x, event.y):
-            return
-
-        dibujando_elipse = not dibujando_elipse
-        if not dibujando_elipse:
-            c_x, c_y, s_x, s_y = None, None, None, None
-
-        ultimo_clic = (event.x, event.y)
-
-        if dibujando_elipse:
-            if c_x is None and c_y is None:
-                c_x, c_y = event.x, event.y
-            else:
-                s_x = abs(event.x - c_x)
-                s_y = abs(event.y - c_y)
-                dibujar_elipse(event)
-                c_x, c_y, s_x, s_y = None, None, None, None
-
-
 # Cambia esta parte en la función on_image_click
 def on_image_click(event):
     # Global circulo, elipse
@@ -371,7 +347,7 @@ def on_image_click(event):
     # Global Circulo
     global centro_x, centro_y, radio, circulo_dibujado, pixel_activado, movimiento_activado, dibujando_circulo, ultimo_clic
     # Global Elipse
-    global c_x, c_y, s_x, s_y, elipse_dibujada, pixel_activado, movimiento_activado, dibujando_elipse, ultimo_clic, e_inicio, e_fin
+    global centro_elipse_x, centro_elipse_y, s_x, s_y, elipse_dibujada, pixel_activado, movimiento_activado, dibujando_elipse, ultimo_clic, e_inicio, e_fin
 
     if circulo_activado:
         # MECANISMO PARA CÍRCULO
@@ -421,48 +397,28 @@ def on_image_click(event):
             if ultimo_clic == (event.x, event.y):
                 return
 
-            if e_inicio is None:
-                # Primer clic: establece el punto de inicio de la elipse
-                e_inicio = (event.x, event.y)
-            else:
-                # Segundo clic: establece el punto final de la elipse
-                # Dibuja la elipse
-                e_fin = (event.x, event.y)
-                dibujar_elipse_segun_puntos(e_inicio, e_fin)
+            # Habilitar/deshabilitar el dibujo de elipses
+            dibujando_elipse = not dibujando_elipse
+            if not dibujando_elipse:
+                # Restablecer variables si se cancela el dibujo de la elipse
+                centro_elipse_x, centro_elipse_y, s_x, s_y = None, None, None, None
+            # Actualizar el estado del último clic
+            ultimo_clic = (event.x, event.y)
 
-                # Restablece las variables de la elipse después de dibujarla
-                e_inicio, e_fin = None, None
+            if dibujando_elipse:
+                if centro_elipse_x is None and centro_elipse_y is None:
+                    # Primer clic: establece el centro de la elipse
+                    centro_elipse_x, centro_elipse_y = event.x, event.y
+                else:
+                    # Segundo clic: establece los semiejes y dibuja la elipse
+                    e_fin = (event.x, event.y)
+                    dibujar_elipse_segun_puntos((centro_elipse_x, centro_elipse_y), e_fin)
+                    # Restablece las variables de la elipse después de dibujarla
+                    centro_elipse_x, centro_elipse_y, s_x, s_y = None, None, None, None
 
-        elif pixel_activado and datos_cubo is not None:
-            # Obtén las coordenadas de datos a partir de las coordenadas del evento
-            coords_data = ax.transData.inverted().transform((event.x, event.y))
-            x, y = int(coords_data[0]), int(coords_data[1])
-            # Obtén el valor del píxel en las coordenadas (x, y) de tus datos de la imagen
-            valor_pixel = datos_cubo[x, y]
-            # Aquí puedes hacer lo que quieras con el valor del píxel, por ejemplo, mostrarlo en una etiqueta
-            # Llamar a la función para graficar el espectro o realizar otras acciones relacionadas con los datos de píxeles
-            graficar()
-
-
-
-# Tu código para pixel aquí
-
-    # Aquí puedes agregar más casos para otras formas si es necesario
-
-
-
-
-
-# Nueva función para cambiar el tamaño del círculo
-def actualizar_radio(val):
-    global radio, ultimo_circulo
-    radio = float(val)
-    if ultimo_circulo is not None:
-        ultimo_circulo.set_radius(radio)
-        canvas.draw()
 
 # Funcion para dibujar una elipse
-def dibujar_elipse(event):
+def dibujando_elipse(event):
     global e_inicio, e_fin, ultima_elipse
 
     if eclipse_activado and event.xdata is not None and event.ydata is not None:
@@ -480,15 +436,20 @@ def dibujar_elipse(event):
             e_inicio = None
             e_fin = None
 def dibujar_elipse_segun_puntos(inicio, fin):
+    global ultima_elipse
+    s_x = 1.0
+    s_y = 1.0
     x1, y1 = inicio
     x2, y2 = fin
 
-    a = abs(x2 - x1)
-    b = abs(y2 - y1)
-    centro_x = (x1 + x2) / 2
-    centro_y = (y1 + y2) / 2
+    # Calcula los semiejes a y b
+    s_x = abs(e_fin[0] - e_inicio[0]) / 2
+    s_y = abs(e_fin[1] - e_inicio[1]) / 2
+    # Centro de la elipse
+    centro_elipse_x = (x1 + x2) / 2
+    centro_elipse_y = (y1 + y2) / 2
 
-    elipse = Ellipse((centro_x, centro_y), 2 * a, 2 * b, color='blue', fill=False)
+    elipse = Ellipse((centro_elipse_x, centro_elipse_y), s_x, s_y, color='blue', fill=False)
     ax.add_patch(elipse)
     elipses_dibujadas.append(elipse)  # Agrega la elipse a la lista de elipses dibujadas
     ultima_elipse = elipse  # Actualiza la última elipse dibujada
@@ -511,25 +472,6 @@ def dibujar_circulo(event):
 
     canvas.draw()
 
-# Función para borrar todos los círculos dibujados
-def borrar_circulos():
-    for circulo in circulos_dibujados:
-        circulo.remove()
-    circulos_dibujados.clear()  # Limpia la lista de círculos dibujados
-    canvas.draw()
-
-
-# Nueva función para borrar el último círculo dibujado
-def borrar_ultimo_circulo():
-    global circulos_dibujados, ultimo_circulo
-    if circulos_dibujados:
-        ultimo_circulo.remove()
-        circulos_dibujados.pop()  # Elimina el último círculo de la lista
-        if circulos_dibujados:  # Si todavía hay círculos en la lista, actualiza el último círculo
-            ultimo_circulo = circulos_dibujados[-1]
-        else:
-            ultimo_circulo = None  # Si no hay más círculos, establece el último_círculo a None
-        canvas.draw()
 def on_canvas_click(event):
     if event.button == 3:  # Verificar si es un clic derecho
         abrir_menu_desplegable(event)
@@ -552,7 +494,7 @@ def abrir_menu_desplegable(event):
         menu.add_command(label="• Pixel (activado)", command=toggle_pixel)
     else:
         menu.add_command(label="Pixel (desactivado)", command=toggle_pixel)
-    #Agregar la opción "Eclipse" con la variable de control
+    # Agregar la opción "Eclipse" con la variable de control
     if eclipse_activado:
         menu.add_command(label="• Eclipse (activado)", command=toggle_eclipse)
     else:
@@ -611,7 +553,7 @@ def toggle_circulo():
     area_activado = False
     # Si desactivas la opción "Círculo", borra todos los círculos dibujados
     if not circulo_activado:
-        borrar_circulos()
+        borrar_figuras()
 
 def toggle_eclipse():
     global pixel_activado, movimiento_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado
@@ -621,6 +563,8 @@ def toggle_eclipse():
     circulo_activado = False
     cuadrado_activado = False
     area_activado = False
+    if not eclipse_activado:
+        borrar_figuras()
 
 def toggle_cuadrado():
     global pixel_activado, movimiento_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado
@@ -678,10 +622,74 @@ def cerrar_ventana_principal():
     ventana.quit()  # Finalizar el bucle principal de Tkinter
     ventana.destroy()  # Destruir la ventana principal
 
+def borrar_figuras():
+    if circulo_activado:
+        for circulo in circulos_dibujados:
+            circulo.remove()
+        circulos_dibujados.clear()  # Limpia la lista de círculos dibujados
+
+    elif eclipse_activado:
+        for elipse in elipses_dibujadas:
+            elipse.remove()
+        elipses_dibujadas.clear()  # Limpia la lista de círculos dibujados
+    canvas.draw()
+
+def borrar_ultima_figura():
+    global circulos_dibujados, elipses_dibujadas, ultima_elipse, ultimo_circulo
+
+    if circulo_activado:
+        if circulos_dibujados:
+            ultimo_circulo.remove()
+            circulos_dibujados.pop()  # Elimina el último círculo de la lista
+            if circulos_dibujados:  # Si todavía hay círculos en la lista, actualiza el último círculo
+                ultimo_circulo = circulos_dibujados[-1]
+            else:
+                ultimo_circulo = None  # Si no hay más círculos, establece el último_círculo a None
+            canvas.draw()
+    elif eclipse_activado:
+        if elipses_dibujadas:
+            ultima_elipse.remove()
+            elipses_dibujadas.pop()  # Elimina el último círculo de la lista
+            if elipses_dibujadas:  # Si todavía hay círculos en la lista, actualiza el último círculo
+                ultima_elipse = elipses_dibujadas[-1]
+            else:
+                ultima_elipse = None  # Si no hay más círculos, establece el último_círculo a None
+            canvas.draw()
+
+def botones_actualizados():
+    if circulo_activado:
+        boton_borrar_figuras.config(state=tk.NORMAL)
+        boton_borrar_ultima_figura.config(state=tk.NORMAL)
+    elif eclipse_activado:
+        boton_borrar_figuras.config(state=tk.NORMAL)
+        boton_borrar_ultima_figura.config(state=tk.NORMAL)
+
+def tamano_figura(val):
+    global radio, s_x, s_y, ultima_elipse, ultimo_circulo, relacion_aspecto_original
+    tamano = float(val)
+    if circulo_activado:
+        radio = float(val)
+        if ultimo_circulo is not None:
+            ultimo_circulo.set_radius(radio)
+
+
+
+    elif eclipse_activado:
+
+        if ultima_elipse is not None and isinstance(ultima_elipse, Ellipse):
+            s_x = tamano
+            s_y = tamano
+            ultima_elipse.set_width(2 * s_x)
+            ultima_elipse.set_height(2 * s_y)
+    canvas.draw()
+
+
+
+
 
 ventana = tk.Tk()
 ventana.title("Cargar Archivos Fits")
-ventana.geometry("650x900")
+ventana.geometry("1050x900")
 
 ventana.protocol("WM_DELETE_WINDOW", cerrar_ventana_principal)
 
@@ -719,13 +727,13 @@ boton_siguiente.grid(row=3, column=4, padx=5, pady=5)
 barra_desplazamiento = tk.Scale(ventana, orient="horizontal", command=cargar_imagen_desde_barra)
 barra_desplazamiento.grid(row=3, column=1, columnspan=3, padx=5, pady=5, sticky="ew")
 
-# Crear un botón para borrar círculos
-boton_borrar_circulos = tk.Button(ventana, text="Borrar Círculos", command=borrar_circulos)
-boton_borrar_circulos.grid(row=3, column=6, padx=5, pady=10)  # Ajusta la ubicación del botón
+# Crear un botón para borrar figuras (círculos o elipses)
+boton_borrar_figuras = tk.Button(ventana, text="Borrar Figuras", command=borrar_figuras)
+boton_borrar_figuras.grid(row=3, column=6, padx=5, pady=10)
 
-# Crear un botón para borrar el último círculo dibujado
-boton_borrar_ultimo_circulo = tk.Button(ventana, text="Borrar Último Círculo", command=borrar_ultimo_circulo)
-boton_borrar_ultimo_circulo.grid(row=3, column=7, padx=5, pady=10)  # Ajusta la ubicación del botón
+# Crear un botón para borrar la última figura dibujada (círculo o elipse)
+boton_borrar_ultima_figura = tk.Button(ventana, text="Borrar Última Figura", command=borrar_ultima_figura)
+boton_borrar_ultima_figura.grid(row=3, column=7, padx=5, pady=10)
 
 # Crear una figura de Matplotlib y canvas
 fig = Figure(figsize=(6, 6))
@@ -755,11 +763,11 @@ fig.canvas.mpl_connect('button_press_event', on_image_click)
 canvas.mpl_connect('button_press_event', dibujar_circulo)
 
 # Configurar el evento de clic izquierdo en el canvas para dibujar una elipse
-canvas.mpl_connect('button_press_event', dibujar_elipse)
+canvas.mpl_connect('button_press_event', dibujando_elipse)
 
-# Nueva función para cambiar el tamaño del círculo
-radio_scale = Scale(ventana, from_=1, to=100, orient="horizontal", label="Tamaño del Círculo", command=actualizar_radio)
-radio_scale.grid(row=3, column=5, padx=5, pady=10)  # Cambia row a 3 y column a 5
+# Crear un control deslizante para cambiar el tamaño de la figura (círculo o elipse)
+tamano_scale = Scale(ventana, from_=1, to=100, orient="horizontal", label="Tamaño de la Figura", command=tamano_figura, width=20)
+tamano_scale.grid(row=3, column=8, padx=5, pady=10)  # Ajusta la ubicación del control deslizante
 
 
 ventana.mainloop()
