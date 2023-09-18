@@ -7,7 +7,7 @@
 1) agregar caja para elegir numero de plano (eje z) dentro del cubo
   (e.g. 90)
   
-2- barrita desplazadora
+2- barrita desplazadora(hecho)
 
 3.1- agregar posibilidad de definir regiones:
 
