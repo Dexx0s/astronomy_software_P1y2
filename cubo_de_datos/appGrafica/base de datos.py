@@ -31,6 +31,7 @@ fig = None
 ax = None
 canvas = None
 linea_grafico = None  # Variable para almacenar la línea del gráfico
+barra_desplazamiento = None  # Variable para la barra de desplazamiento
 
 cliente = pymongo.MongoClient("mongodb://localhost:27017/")
 base_datos = cliente["Astronomy"]
@@ -67,6 +68,7 @@ def cargar_imagen_anterior():
     if imagen_actual > 0:
         imagen_actual -= 1
         cargar_imagen_actual()
+        actualizar_barra_desplazamiento()
 
 
 # Función para cargar la siguiente imagen
@@ -75,7 +77,15 @@ def cargar_siguiente_imagen():
     if imagen_actual < num_frames - 1:
         imagen_actual += 1
         cargar_imagen_actual()
+        actualizar_barra_desplazamiento()
 
+# Función para cargar la imagen actual en función del valor de la barra de desplazamiento
+def cargar_imagen_desde_barra(event):
+    global imagen_actual
+    nueva_posicion = int(barra_desplazamiento.get())
+    if nueva_posicion >= 1 and nueva_posicion <= num_frames:
+        imagen_actual = nueva_posicion - 1
+        cargar_imagen_actual()
 
 # Función para crear una ventana emergente para el gráfico
 def crear_ventana_grafico():
@@ -147,7 +157,7 @@ def abrir_archivo():
                 # Habilitar el botón "Graficar"
                 boton_graficar.config(state=tk.NORMAL)
                 actualizar_etiqueta_coordenadas()  # Agregado para actualizar coordenadas al cargar el archivo
-
+                actualizar_barra_desplazamiento()
                 # Base de datos = File_Collection
                 file_info = {
                     "Data_id": data_id,                          # Identificador
@@ -283,6 +293,12 @@ def on_scroll(event):
 
         except Exception as e:
             print(f"Error en el zoom: {e}")
+# Función para actualizar la barra de desplazamiento
+def actualizar_barra_desplazamiento():
+    global barra_desplazamiento, num_frames
+    if barra_desplazamiento is not None:
+        barra_desplazamiento.config(from_=1, to=num_frames, command=cargar_imagen_desde_barra)
+        barra_desplazamiento.set(imagen_actual + 1)
 
 def cerrar_ventana_principal():
     ventana.quit()  # Finalizar el bucle principal de Tkinter
@@ -291,7 +307,7 @@ def cerrar_ventana_principal():
 
 ventana = tk.Tk()
 ventana.title("Cargar Archivos Fits")
-ventana.geometry("800x700")
+ventana.geometry("650x900")
 
 ventana.protocol("WM_DELETE_WINDOW", cerrar_ventana_principal)
 
@@ -324,6 +340,10 @@ boton_anterior.grid(row=3, column=0, padx=5, pady=5)
 
 boton_siguiente = tk.Button(ventana, text="Siguiente", command=cargar_siguiente_imagen, state=tk.DISABLED)
 boton_siguiente.grid(row=3, column=4, padx=5, pady=5)
+
+# Crear una barra de desplazamiento horizontal
+barra_desplazamiento = tk.Scale(ventana, orient="horizontal", command=cargar_imagen_desde_barra)
+barra_desplazamiento.grid(row=3, column=1, columnspan=3, padx=5, pady=5, sticky="ew")
 
 # Crear una figura de Matplotlib y canvas
 fig, ax = plt.subplots(figsize=(6, 6))

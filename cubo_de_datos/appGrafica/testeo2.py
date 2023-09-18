@@ -1,6 +1,6 @@
 import numpy as np
 import tkinter as tk
-from tkinter import filedialog, messagebox, Toplevel
+from tkinter import filedialog, messagebox, Toplevel, Menu
 from astropy.io import fits
 import pymongo
 from datetime import datetime
@@ -9,6 +9,10 @@ from matplotlib import pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import os
 import uuid
+from matplotlib.patches import Circle
+from matplotlib.figure import Figure
+from tkinter import Scale
+
 
 data_id = str(uuid.uuid4())
 graphic_id = str(uuid.uuid4())
@@ -25,16 +29,39 @@ entrada_coord_x = None
 entrada_coord_y = None
 ventana_grafico = None  # Ventana para el gráfico
 ventana_grafico_abierta = False
+last_mouse_x = 0
+last_mouse_y = 0
+movimiento_activado = False  # Variable para rastrear el estado del movimiento
+pixel_activado = False  # Variable para rastrear el estado de la opción "Pixel"
+circulo_activado = False  # Variable para rastrear el estado de la opción "Círculo"
+eclipse_activado = False  # Variable para rastrear el estado del movimiento
+cuadrado_activado = False  # Variable para rastrear el estado de la opción "Pixel"
+area_activado = False  # Variable para rastrear el estado de la opción "Círculo"
+ultimo_clic = None
 
 # Variables para el seguimiento del arrastre del ratón
 dragging = False
+
+
 
 # Variables relacionadas con Matplotlib
 fig = None
 ax = None
 canvas = None
-linea_grafico = None  # Variable para almacenar la línea del gráfico
-barra_desplazamiento = None  # Variable para la barra de desplazamiento
+linea_grafico = None
+barra_desplazamiento = None
+circulos_dibujados = []  # Lista para almacenar los círculos dibujados
+radio_scale = None  # Variable para el scrollbar del radio del círculo
+radio = 5  # Valor predeterminado del radio del círculo
+ultimo_circulo = None  # Variable para el último círculo dibujado
+
+# Variables para el circulo
+centro_x, centro_y = None, None
+dibujando_circulo = False
+circulo_dibujado = None
+
+
+
 
 cliente = pymongo.MongoClient("mongodb://localhost:27017/")
 base_datos = cliente["Astronomy"]
@@ -46,9 +73,6 @@ data_collection = base_datos["Data_collection"]
 graphics_collection = base_datos["Graphics"]
 # Comments
 comments_collection = base_datos["Comments"]
-
-# poner 1 para activar base de datos
-switch_pymongo=0
 
 
 # Función para cargar la imagen FITS actual
@@ -132,7 +156,7 @@ def detener_arrastre(event):
 # Función para manejar el arrastre de la imagen
 def mover_imagen(event):
     global dragging, last_mouse_x, last_mouse_y
-    if dragging:
+    if dragging and movimiento_activado:
         # Calcular el desplazamiento del ratón
         dx = (event.x - last_mouse_x) * 0.1  # Ajusta este factor según tu preferencia
         dy = (event.y - last_mouse_y) * 0.1  # Ajusta este factor según tu preferencia
@@ -157,12 +181,11 @@ def mover_imagen(event):
         last_mouse_x = event.x
         last_mouse_y = event.y
 
-
-
 def remove_nans(extension_valida):
     hdul = fits.open(archivo_fits, ext=2)
     extension_valida.data[np.isnan(extension_valida.data)] = 0
     extension_valida.data[np.isinf(extension_valida.data)] = 0
+
 
 
 # Función para cargar un archivo FITS
@@ -178,12 +201,12 @@ def abrir_archivo():
     archivo_fits = filedialog.askopenfilename(filetypes=[("FITS files", "*.fits")])
     if archivo_fits:
         try:
-            # Validaciones
             # Abrir el archivo FITS
             hdul = fits.open(archivo_fits, ext=1)
             # Con esto podemos verificar que se tomen archivos FITS segun PRYMARY, IMAGE, DATA CUBE y ESPECTRUM
             extension_valida = None
             nombre_archivo = os.path.basename(archivo_fits)
+
             for ext in hdul:
                 if ext.name in ["PRIMARY", "IMAGE", "DATA CUBE", "SPECTRUM", "STANDARD"]:
                     extension_valida = ext
@@ -199,7 +222,6 @@ def abrir_archivo():
 
                 if respuesta == 'yes':
                     data = remove_nans(extension_valida)
-
 
             header = extension_valida.header
             print(header)  # Imprimir el encabezado para ver la información
@@ -220,27 +242,25 @@ def abrir_archivo():
             boton_graficar.config(state=tk.NORMAL)
             actualizar_etiqueta_coordenadas()  # Agregado para actualizar coordenadas al cargar el archivo
             actualizar_barra_desplazamiento()
+            # Base de datos = File_Collection
+            file_info = {
+                "Data_id": data_id,                          # Identificador
+                "File_name": nombre_archivo,                 # File
+                "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
+                "Hora": fecha_actual.strftime("%H:%M:%S")    # Fecha segun Hora
+            }
+            file_collection.insert_one(file_info)
 
-            if switch_pymongo:
-                # Base de datos = File_Collection
-                file_info = {
-                    "Data_id": data_id,                          # Identificador
-                    "File_name": nombre_archivo,                 # File
-                    "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
-                    "Hora": fecha_actual.strftime("%H:%M:%S")    # Fecha segun Hora
-                }
-                file_collection.insert_one(file_info)
-                    
-                # Base de datos = Data_Collection
-                data_info = {
-                    "Data_id": data_id,                          # Identificador
-                    "Filename": nombre_archivo,                  # File
-                    "Header": tipo_extension,                    # Encabezado
-                    "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
-                    "Hora": fecha_actual.strftime("%H:%M:%S"),   # Fecha segun Hora
-                    "Data": str(datos_cubo)  # Datos
-                }
-                data_collection.insert_one(data_info)
+            # Base de datos = Data_Collection
+            data_info = {
+                "Data_id": data_id,                          # Identificador
+                "Filename": nombre_archivo,                  # File
+                "Header": tipo_extension,                    # Encabezado
+                "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
+                "Hora": fecha_actual.strftime("%H:%M:%S"),   # Fecha segun Hora
+                "Data": str(datos_cubo)  # Datos
+            }
+            data_collection.insert_one(data_info)
 
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo abrir el archivo FITS: {str(e)}")
@@ -249,33 +269,6 @@ def abrir_archivo():
         # Si no se selecciona un archivo FITS válido, deshabilita el botón "Graficar"
         boton_graficar.config(state=tk.DISABLED)
 
-
-
-
-# tipos de regiones
-# punto (default) , circulo (C),elipse (E), rectangulo (R), poligono (P) . Usar teclas preferentemente ()
-
-# interaccion con teclado/mouse para definir regiones
-
-# seleccionar pixeles dentro de region o mascara
-# para circulo ver esto: https://stackoverflow.com/questions/44865023/how-can-i-create-a-circular-mask-for-a-numpy-array
-# o tambien esta pagina https://saturncloud.io/blog/creating-a-circular-mask-for-a-numpy-array-a-comprehensive-guide/
-
-# a partir de region, producir un espectro
-#     punto ya esta casi listo
-#    # Obtener las coordenadas del píxel desde las entradas
-#             x_str = entrada_coord_x.get()
-#             y_str = entrada_coord_y.get()
-
-#             # Verificar que las coordenadas estén dentro de los límites
-#             if x_str and y_str:
-#                 x = int(x_str)
-#                 y = int(y_str)
-#                 if 0 <= x < datos_cubo.shape[2] and 0 <= y < datos_cubo.shape[1]:
-#                     espectro = datos_cubo[:, y, x]
-
-# modificar funcion graficar para que reciba un espectro
-# def graficar(espectro):
 
 # Función para graficar el espectro del píxel seleccionado
 def graficar():
@@ -318,20 +311,19 @@ def graficar():
                             raise ValueError(
                                 "No es posible abrir este tipo de archivo FITS, dado que no contiene imágenes.")
 
-                    if switch_pymongo:
-                        # Base de datos = Graphics_Colletion
-                        tipo_extension = extension_valida.name
-                        selected_pixel = f"({x}, {y})"
-                        graphics_info = {
-                            "Graphic_id": graphic_id,                     # Identificador unico
-                            "Header": tipo_extension,                     # Nombre archivo fits
-                            "Imagen": imagen_actual + 1,
-                            "Pixeles": selected_pixel,                    # Pixeles segun x e y
-                            "Fecha": fecha_actual.strftime("%d/%m/%Y"),   # Fecha segun día/mes/año
-                            "Hora": fecha_actual.strftime("%H:%M:%S"),    # Fecha segun Hora
-                            "Data": str(espectro)                         # Representacion de los datos
-                        }
-                        graphics_collection.insert_one(graphics_info)
+                    # Base de datos = Graphics_Colletion
+                    tipo_extension = extension_valida.name
+                    selected_pixel = f"({x}, {y})"
+                    graphics_info = {
+                        "Graphic_id": graphic_id,                     # Identificador unico
+                        "Header": tipo_extension,                     # Nombre archivo fits
+                        "Imagen": imagen_actual + 1,
+                        "Pixeles": selected_pixel,                    # Pixeles segun x e y
+                        "Fecha": fecha_actual.strftime("%d/%m/%Y"),   # Fecha segun día/mes/año
+                        "Hora": fecha_actual.strftime("%H:%M:%S"),    # Fecha segun Hora
+                        "Data": str(espectro)                         # Representacion de los datos
+                    }
+                    graphics_collection.insert_one(graphics_info)
 
                 else:
                     messagebox.showerror("Error", "Coordenadas fuera de los límites de la imagen.")
@@ -340,11 +332,41 @@ def graficar():
         except ValueError:
             messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
 
-# Función para manejar el clic del ratón en la imagen
+# Cambia esta parte en la función on_image_click
 def on_image_click(event):
-    if datos_cubo is not None and event.xdata is not None and event.ydata is not None:
-        # Obtener las coordenadas del píxel seleccionado
-        x, y = int(event.xdata), int(event.ydata)
+    global centro_x, centro_y, radio, circulo_dibujado, pixel_activado, movimiento_activado, circulo_activado, dibujando_circulo, ultimo_clic
+    if circulo_activado and (pixel_activado == False and movimiento_activado == False) and event.x and event.y:
+        # Verificar que no sea un doble clic
+        if ultimo_clic == (event.x, event.y):
+            return
+
+        # Habilitar/deshabilitar el dibujo de círculos
+        dibujando_circulo = not dibujando_circulo
+        if not dibujando_circulo:
+            # Restablecer variables si se cancela el dibujo del círculo
+            centro_x, centro_y, radio = None, None, None
+        # Actualizar el estado del último clic
+        ultimo_clic = (event.x, event.y)
+
+        if dibujando_circulo:
+            if centro_x is None and centro_y is None:
+                # Primer clic: establece el centro del círculo
+                centro_x, centro_y = event.x, event.y
+            else:
+                # Segundo clic: calcula el radio y dibuja el círculo
+                radio = ((event.x - centro_x) ** 2 + (event.y - centro_y) ** 2) ** 0.5
+                dibujar_circulo(event)
+                # Restablece las variables del círculo después de dibujarlo
+                centro_x, centro_y, radio = None, None, None
+
+
+    elif pixel_activado and datos_cubo is not None:
+
+        # Obtén las coordenadas de datos a partir de las coordenadas del evento
+
+        coords_data = ax.transData.inverted().transform((event.x, event.y))
+
+        x, y = int(coords_data[0]), int(coords_data[1])
 
         # Actualizar las entradas de las coordenadas
         entrada_coord_x.delete(0, tk.END)
@@ -357,6 +379,156 @@ def on_image_click(event):
 
         actualizar_etiqueta_coordenadas()
 
+# Nueva función para cambiar el tamaño del círculo
+def actualizar_radio(val):
+    global radio, ultimo_circulo
+    radio = float(val)
+    if ultimo_circulo is not None:
+        ultimo_circulo.set_radius(radio)
+        canvas.draw()
+
+# Función para dibujar un círculo en el subplot de Matplotlib
+def dibujar_circulo(event):
+    global radio, ultimo_circulo
+
+    if circulo_activado and event.xdata is not None and event.ydata is not None:
+        x, y = event.xdata, event.ydata
+        radio = 5  # Puedes ajustar el tamaño del círculo según tus preferencias
+        circulo = Circle((x, y), radio, color='red', fill=False)
+        ax.add_patch(circulo)
+        circulos_dibujados.append(circulo)  # Agrega el círculo a la lista de círculos dibujados
+        ultimo_circulo = circulo  # Actualiza el último círculo dibujado
+
+    canvas.draw()
+
+# Función para borrar todos los círculos dibujados
+def borrar_circulos():
+    for circulo in circulos_dibujados:
+        circulo.remove()
+    circulos_dibujados.clear()  # Limpia la lista de círculos dibujados
+    canvas.draw()
+
+
+# Nueva función para borrar el último círculo dibujado
+def borrar_ultimo_circulo():
+    global circulos_dibujados, ultimo_circulo
+    if circulos_dibujados:
+        ultimo_circulo.remove()
+        circulos_dibujados.pop()  # Elimina el último círculo de la lista
+        if circulos_dibujados:  # Si todavía hay círculos en la lista, actualiza el último círculo
+            ultimo_circulo = circulos_dibujados[-1]
+        else:
+            ultimo_circulo = None  # Si no hay más círculos, establece el último_círculo a None
+        canvas.draw()
+def on_canvas_click(event):
+    if event.button == 3:  # Verificar si es un clic derecho
+        abrir_menu_desplegable(event)
+
+def abrir_menu_desplegable(event):
+    # Crear el menú desplegable
+    menu = Menu(ventana, tearoff=0)
+    # Agregar la opción "Movimiento" con el marcado correcto
+    if movimiento_activado:
+        menu.add_command(label="• Movimiento (activado)", command=toggle_movimiento)
+    else:
+        menu.add_command(label="Movimiento (desactivado)", command=toggle_movimiento)
+    # Agregar la opción "Circulo"
+    if circulo_activado:
+        menu.add_command(label="• Circulo (activado)", command=toggle_circulo)
+    else:
+        menu.add_command(label="Circulo (desactivado)", command=toggle_circulo)
+    # Agregar la opción "Pixel" con la variable de control
+    if pixel_activado:
+        menu.add_command(label="• Pixel (activado)", command=toggle_pixel)
+    else:
+        menu.add_command(label="Pixel (desactivado)", command=toggle_pixel)
+    #Agregar la opción "Eclipse" con la variable de control
+    if eclipse_activado:
+        menu.add_command(label="• Eclipse (activado)", command=toggle_eclipse)
+    else:
+        menu.add_command(label="Eclipse (desactivado)", command=toggle_eclipse)
+    # Agregar la opción "Cuadrado"
+    if cuadrado_activado:
+        menu.add_command(label="• Cuadrado (activado)", command=toggle_cuadrado)
+    else:
+        menu.add_command(label="Cuadrado (desactivado)", command=toggle_cuadrado)
+    # Agregar la opción "Area libre" con la variable de control
+    if area_activado:
+        menu.add_command(label="• Area libre (activado)", command=toggle_area)
+    else:
+        menu.add_command(label="Area libre (desactivado)", command=toggle_area)
+
+    # Mostrar el menú en la posición del clic derecho
+    menu.post(event.x_root, event.y_root)
+
+
+def toggle_movimiento():
+    global movimiento_activado, pixel_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado
+    movimiento_activado = not movimiento_activado
+    pixel_activado = False
+    circulo_activado = False
+    eclipse_activado = False
+    cuadrado_activado = False
+    area_activado = False
+    # Desconectar los eventos de arrastre si "Movimiento" está desactivado
+    if movimiento_activado:
+        canvas.get_tk_widget().bind("<ButtonPress-1>", iniciar_arrastre)
+        canvas.get_tk_widget().bind("<B1-Motion>", mover_imagen)
+        canvas.get_tk_widget().bind("<ButtonRelease-1>", detener_arrastre)
+    else:
+        canvas.get_tk_widget().unbind("<ButtonPress-1>")
+        canvas.get_tk_widget().unbind("<B1-Motion>")
+        canvas.get_tk_widget().unbind("<ButtonRelease-1>")
+
+# Nueva función para cambiar el estado de la opción "Pixel"
+def toggle_pixel():
+    global pixel_activado, movimiento_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado
+    pixel_activado = not pixel_activado
+    movimiento_activado = False
+    circulo_activado = False
+    eclipse_activado = False
+    cuadrado_activado = False
+    area_activado = False
+
+# Nueva función para cambiar el estado de la opción "Círculo"
+def toggle_circulo():
+    global pixel_activado, movimiento_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado
+    circulo_activado = not circulo_activado
+    movimiento_activado = False
+    pixel_activado = False
+    eclipse_activado = False
+    cuadrado_activado = False
+    area_activado = False
+    # Si desactivas la opción "Círculo", borra todos los círculos dibujados
+    if not circulo_activado:
+        borrar_circulos()
+
+def toggle_eclipse():
+    global pixel_activado, movimiento_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado
+    eclipse_activado = not eclipse_activado
+    movimiento_activado = False
+    pixel_activado = False
+    circulo_activado = False
+    cuadrado_activado = False
+    area_activado = False
+
+def toggle_cuadrado():
+    global pixel_activado, movimiento_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado
+    cuadrado_activado = not cuadrado_activado
+    movimiento_activado = False
+    pixel_activado = False
+    circulo_activado = False
+    eclipse_activado = False
+    area_activado = False
+
+def toggle_area():
+    global pixel_activado, movimiento_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado
+    area_activado = not area_activado
+    movimiento_activado = False
+    pixel_activado = False
+    circulo_activado = False
+    eclipse_activado = False
+    cuadrado_activado = False
 
 # Función para manejar el evento de zoom con la rueda del ratón
 def on_scroll(event):
@@ -437,15 +609,28 @@ boton_siguiente.grid(row=3, column=4, padx=5, pady=5)
 barra_desplazamiento = tk.Scale(ventana, orient="horizontal", command=cargar_imagen_desde_barra)
 barra_desplazamiento.grid(row=3, column=1, columnspan=3, padx=5, pady=5, sticky="ew")
 
+# Crear un botón para borrar círculos
+boton_borrar_circulos = tk.Button(ventana, text="Borrar Círculos", command=borrar_circulos)
+boton_borrar_circulos.grid(row=3, column=6, padx=5, pady=10)  # Ajusta la ubicación del botón
+
+# Crear un botón para borrar el último círculo dibujado
+boton_borrar_ultimo_circulo = tk.Button(ventana, text="Borrar Último Círculo", command=borrar_ultimo_circulo)
+boton_borrar_ultimo_circulo.grid(row=3, column=7, padx=5, pady=10)  # Ajusta la ubicación del botón
+
 # Crear una figura de Matplotlib y canvas
-fig, ax = plt.subplots(figsize=(6, 6))
+fig = Figure(figsize=(6, 6))
+ax = fig.add_subplot(111)
 canvas = FigureCanvasTkAgg(fig, master=ventana)
 canvas.get_tk_widget().grid(row=4, column=0, columnspan=5, padx=5, pady=10)
 
+
 # Conectar eventos del ratón para el arrastre
-canvas.get_tk_widget().bind("<ButtonPress-1>", iniciar_arrastre)
-canvas.get_tk_widget().bind("<B1-Motion>", mover_imagen)
-canvas.get_tk_widget().bind("<ButtonRelease-1>", detener_arrastre)
+#canvas.get_tk_widget().bind("<ButtonPress-1>", iniciar_arrastre)
+#canvas.get_tk_widget().bind("<B1-Motion>", mover_imagen)
+#canvas.get_tk_widget().bind("<ButtonRelease-1>", detener_arrastre)
+canvas.get_tk_widget().bind("<Button-3>", abrir_menu_desplegable)
+canvas.get_tk_widget().bind("<Button-1>", on_image_click)
+
 
 # Conectar la función on_scroll al evento de desplazamiento de la rueda del ratón
 fig.canvas.mpl_connect('scroll_event', on_scroll)
@@ -455,6 +640,13 @@ fig.canvas.mpl_connect('button_press_event', on_image_click)
 
 # Configurar el evento de clic del ratón en la imagen
 fig.canvas.mpl_connect('button_press_event', on_image_click)
+
+# Configurar el evento de clic izquierdo en el canvas para dibujar un círculo
+canvas.mpl_connect('button_press_event', dibujar_circulo)
+
+# Nueva función para cambiar el tamaño del círculo
+radio_scale = Scale(ventana, from_=1, to=100, orient="horizontal", label="Tamaño del Círculo", command=actualizar_radio)
+radio_scale.grid(row=3, column=5, padx=5, pady=10)  # Cambia row a 3 y column a 5
 
 
 ventana.mainloop()
