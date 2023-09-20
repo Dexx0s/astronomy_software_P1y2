@@ -42,8 +42,6 @@ ultimo_clic = None
 # Variables para el seguimiento del arrastre del ratón
 dragging = False
 
-
-
 # Variables relacionadas con Matplotlib
 fig = None
 ax = None
@@ -331,6 +329,49 @@ def graficar():
                 messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
         except ValueError:
             messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
+
+
+
+# Función para graficar el promedio del espectro dentro de un área circular
+def graficar_espectro_circular():
+    global circulos_dibujados, datos_cubo, figura_grafico, axes_grafico, ventana_grafico_abierta, linea_grafico
+
+    if datos_cubo is not None:
+        try:
+            if len(circulos_dibujados) == 1:
+                circulo = circulos_dibujados[0]
+                centro_x, centro_y = circulo.center
+                radio = circulo.radius
+                y, x = np.ogrid[-centro_y:datos_cubo.shape[1] - centro_y, -centro_x:datos_cubo.shape[2] - centro_x]
+                mascara = x ** 2 + y ** 2 <= radio ** 2
+                espectro = datos_cubo[:, mascara]
+
+                # Calcula el promedio del espectro por píxel dentro del área circular
+                espectro_promedio = np.mean(espectro, axis=1)
+
+                if not ventana_grafico_abierta:
+                    crear_ventana_grafico()
+                    linea_grafico, = axes_grafico.plot(espectro_promedio, lw=2)
+                    axes_grafico.set_xlabel('Frame')
+                    axes_grafico.set_ylabel('Intensidad')
+                    ventana_grafico_abierta = True
+                else:
+                    linea_grafico.set_ydata(espectro_promedio)
+
+                axes_grafico.set_xlim(0, len(espectro_promedio) - 1)
+                axes_grafico.set_ylim(np.min(espectro_promedio) - 0.0002, np.max(espectro_promedio))
+
+                # Actualiza el título del gráfico con la información del círculo y el promedio
+                axes_grafico.set_title(
+                    f'Promedio del Espectro por píxel en el área circular (Centro: ({centro_x}, {centro_y}), Radio: {radio})')
+                figura_grafico.canvas.draw()
+
+            else:
+                messagebox.showerror("Error",
+                                     "Selecciona exactamente un círculo para graficar el promedio del espectro por píxel.")
+
+        except ValueError:
+            messagebox.showerror("Error", "No se pudo graficar el promedio del espectro por píxel en el área circular.")
 
 # Cambia esta parte en la función on_image_click
 def on_image_click(event):
@@ -647,6 +688,10 @@ canvas.mpl_connect('button_press_event', dibujar_circulo)
 # Nueva función para cambiar el tamaño del círculo
 radio_scale = Scale(ventana, from_=1, to=100, orient="horizontal", label="Tamaño del Círculo", command=actualizar_radio)
 radio_scale.grid(row=3, column=5, padx=5, pady=10)  # Cambia row a 3 y column a 5
+
+# Agregar un botón para graficar el espectro en el área circular
+btn_graficar_espectro = tk.Button(ventana, text="Graficar Espectro Circular", command=graficar_espectro_circular)
+btn_graficar_espectro.grid(row=1, column=0, padx=10, pady=10)
 
 
 ventana.mainloop()
