@@ -851,4 +851,5 @@ boton_area_libre.grid(row=2, column=8, padx=5, pady=10, sticky="e")
 ###########para lo de el area libre####################################
 
 
+
 ventana.mainloop()
