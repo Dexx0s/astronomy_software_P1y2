@@ -73,7 +73,9 @@ cuadrado_activado = False
 cuadrados_dibujados = []  # Lista para almacenar los cuadrados dibujados
 ultimo_cuadrado = None  # Variable para mantener un seguimiento del último cuadrado dibujado
 
-
+#Variables para el pixel
+puntos_dibujados = []
+ultimo_punto = None
 
 cliente = pymongo.MongoClient("mongodb://localhost:27017/")
 base_datos = cliente["Astronomy"]
@@ -282,52 +284,44 @@ def abrir_archivo():
 
 
 # Función para graficar el espectro del píxel seleccionado
-def graficar():
+def graficar(x = None ,y= None):
+    global circulos_dibujados, datos_cubo, figura_grafico, axes_grafico, ventana_grafico_abierta, linea_grafico
     global linea_grafico, figura_grafico, axes_grafico, ventana_grafico, ventana_grafico_abierta
     if datos_cubo is not None:
         try:
-            # Obtener las coordenadas del píxel desde las entradas
-            x_str = entrada_coord_x.get()
-            y_str = entrada_coord_y.get()
 
-            # Verificar que las coordenadas estén dentro de los límites
-            if x_str and y_str:
-                x = int(x_str)
-                y = int(y_str)
-                if 0 <= x < datos_cubo.shape[2] and 0 <= y < datos_cubo.shape[1]:
-                    espectro = datos_cubo[:, y, x]
+            if pixel_activado:
+                if x and y:
+                    x = int(x)
+                    y = int(y)
+                    if 0 <= x < datos_cubo.shape[2] and 0 <= y < datos_cubo.shape[1]:
+                        espectro = datos_cubo[:, y, x]
 
-                    if not ventana_grafico_abierta:
-                        crear_ventana_grafico()
-                        linea_grafico, = axes_grafico.plot(espectro, lw=2)
-                        axes_grafico.set_xlabel('Frame')
-                        axes_grafico.set_ylabel('Intensidad')
-                        ventana_grafico_abierta = True
+                        if not ventana_grafico_abierta:
+                            crear_ventana_grafico()
+                            linea_grafico, = axes_grafico.plot(espectro, lw=2)
+                            axes_grafico.set_xlabel('Frame')
+                            axes_grafico.set_ylabel('Intensidad')
+                            ventana_grafico_abierta = True
+                        else:
+                            # Si ya existe la línea, actualiza sus datos
+                            linea_grafico.set_ydata(espectro)
+
+                        # Establecer los límites de los ejes x e y
+                        axes_grafico.set_xlim(0, len(espectro) - 1)
+                        axes_grafico.set_ylim(-0.0002, max(espectro))
+
+                        # Actualiza el título del gráfico con las coordenadas
+                        axes_grafico.set_title(f'Espectro del píxel ({x}, {y})')
+                        figura_grafico.canvas.draw()
+                        fecha_actual = datetime.now()
                     else:
-                        # Si ya existe la línea, actualiza sus datos
-                        linea_grafico.set_ydata(espectro)
-
-                    # Establecer los límites de los ejes x e y
-                    axes_grafico.set_xlim(0, len(espectro) - 1)
-                    axes_grafico.set_ylim(-0.0002, max(espectro))
-
-                    # Actualiza el título del gráfico con las coordenadas
-                    axes_grafico.set_title(f'Espectro del píxel ({x}, {y})')
-                    figura_grafico.canvas.draw()
-                    fecha_actual = datetime.now()
-                    with fits.open(archivo_fits) as hdul:
-                        extension_valida = next(
-                            (ext for ext in hdul if ext.name in ["PRIMARY", "IMAGE", "DATA CUBE", "SPECTRUM"]), None)
-                        if extension_valida is None:
-                            raise ValueError(
-                                "No es posible abrir este tipo de archivo FITS, dado que no contiene imágenes.")
+                        messagebox.showerror("Error", "Coordenadas fuera de los límites de la imagen.")
 
                     # Base de datos = Graphics_Colletion
-                    tipo_extension = extension_valida.name
                     selected_pixel = f"({x}, {y})"
                     graphics_info = {
                         "Graphic_id": graphic_id,                     # Identificador unico
-                        "Header": tipo_extension,                     # Nombre archivo fits
                         "Imagen": imagen_actual + 1,
                         "Pixeles": selected_pixel,                    # Pixeles segun x e y
                         "Fecha": fecha_actual.strftime("%d/%m/%Y"),   # Fecha segun día/mes/año
@@ -337,9 +331,39 @@ def graficar():
                     graphics_collection.insert_one(graphics_info)
 
                 else:
-                    messagebox.showerror("Error", "Coordenadas fuera de los límites de la imagen.")
-            else:
-                messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
+                    messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
+            elif circulo_activado:
+                if len(circulos_dibujados) == 1:
+                    circulo = circulos_dibujados[0]
+                    centro_x, centro_y = circulo.center
+                    radio = circulo.radius
+                    y, x = np.ogrid[-centro_y:datos_cubo.shape[1] - centro_y, -centro_x:datos_cubo.shape[2] - centro_x]
+                    mascara = x ** 2 + y ** 2 <= radio ** 2
+                    espectro = datos_cubo[:, mascara]
+
+                    # Calcula el promedio del espectro por píxel dentro del área circular
+                    espectro_promedio = np.mean(espectro, axis=1)
+
+                    if not ventana_grafico_abierta:
+                        crear_ventana_grafico()
+                        linea_grafico, = axes_grafico.plot(espectro_promedio, lw=2)
+                        axes_grafico.set_xlabel('Frame')
+                        axes_grafico.set_ylabel('Intensidad')
+                        ventana_grafico_abierta = True
+                    else:
+                        linea_grafico.set_ydata(espectro_promedio)
+
+                    axes_grafico.set_xlim(0, len(espectro_promedio) - 1)
+                    axes_grafico.set_ylim(np.min(espectro_promedio) - 0.0002, np.max(espectro_promedio))
+
+                    # Actualiza el título del gráfico con la información del círculo y el promedio
+                    axes_grafico.set_title(
+                        f'Promedio del Espectro por píxel en el área circular (Centro: ({centro_x}, {centro_y}), Radio: {radio})')
+                    figura_grafico.canvas.draw()
+                else:
+                    messagebox.showerror("Error",
+                                        "Selecciona exactamente un círculo para graficar el promedio del espectro por píxel.")
+
         except ValueError:
             messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
 
@@ -457,7 +481,6 @@ def dibujar_elipse_segun_puntos(inicio, fin):
     ax.add_patch(elipse)
     elipses_dibujadas.append(elipse)  # Agrega la elipse a la lista de elipses dibujadas
     ultima_elipse = elipse  # Actualiza la última elipse dibujada
-
     canvas.draw()
 
 
@@ -487,9 +510,29 @@ def dibujar_circulo(event):
         ax.add_patch(circulo)
         circulos_dibujados.append(circulo)  # Agrega el círculo a la lista de círculos dibujados
         ultimo_circulo = circulo  # Actualiza el último círculo dibujado
+        # Parametros para la funcion graficar
+        centro_x, centro_y = circulo.center
+        radio_circulo = circulo.radius
+        graficar(x=centro_x, y=centro_y, radio=radio_circulo)
 
     canvas.draw()
 
+def dibujar_pixel(event):
+    global pixel_activado, ultimo_punto
+
+    if pixel_activado and event.xdata is not None and event.ydata is not None:
+        x, y = event.xdata, event.ydata
+        print(f"x: {x}, y: {y}")  # Agrega esta línea para imprimir las coordenadas
+        # Solo para que el punto sea visible segun el pixel seleccionado por el usuario
+        tamaño_punto = 1
+        punto = Rectangle((x - tamaño_punto / 2, y - tamaño_punto / 2), tamaño_punto, tamaño_punto, color='red', fill=True)
+        ax.add_patch(punto)
+        puntos_dibujados.append(punto)
+        ultimo_punto = punto
+        # Entrega los parametros de los puntos segun el eje x e y
+        graficar(x,y)
+
+    canvas.draw()
 def on_canvas_click(event):
     if event.button == 3:  # Verificar si es un clic derecho
         abrir_menu_desplegable(event)
@@ -645,12 +688,15 @@ def cerrar_ventana_principal():
     ventana.destroy()  # Destruir la ventana principal
 
 def borrar_figuras():
-    global cuadrados_dibujados, ultima_elipse, ultimo_circulo
+    global cuadrados_dibujados, ultima_elipse, ultimo_circulo, ultimo_punto
 
     if circulo_activado:
         for circulo in circulos_dibujados:
             circulo.remove()
         circulos_dibujados.clear()  # Limpia la lista de círculos dibujados
+    elif pixel_activado:
+        for punto in puntos_dibujados:
+            punto.remove()
     elif eclipse_activado:
         for elipse in elipses_dibujadas:
             elipse.remove()
@@ -665,6 +711,7 @@ def borrar_figuras():
 
 def borrar_ultima_figura():
     global circulos_dibujados, elipses_dibujadas, cuadrados_dibujados, ultima_elipse, ultimo_circulo, ultimo_cuadrado
+    global puntos_dibujados, ultimo_punto
 
     if circulo_activado:
         if circulos_dibujados:
@@ -674,6 +721,15 @@ def borrar_ultima_figura():
                 ultimo_circulo = circulos_dibujados[-1]
             else:
                 ultimo_circulo = None  # Si no hay más círculos, establece el último_círculo a None
+            canvas.draw()
+    elif pixel_activado:
+        if puntos_dibujados:
+            ultimo_punto.remove()
+            puntos_dibujados.pop()
+            if puntos_dibujados:
+                ultimo_punto = puntos_dibujados[-1]
+            else:
+                ultimo_punto = None
             canvas.draw()
     elif eclipse_activado:
         if elipses_dibujadas:
@@ -698,6 +754,9 @@ def botones_actualizados():
     if circulo_activado:
         boton_borrar_figuras.config(state=tk.NORMAL)
         boton_borrar_ultima_figura.config(state=tk.NORMAL)
+    elif pixel_activado:
+        boton_borrar_figuras.config(state=tk.NORMAL)
+        boton_borrar_ultima_figura.config(state=tk.NORMAL)
     elif eclipse_activado:
         boton_borrar_figuras.config(state=tk.NORMAL)
         boton_borrar_ultima_figura.config(state=tk.NORMAL)
@@ -716,14 +775,25 @@ def tamano_figura(val):
         if ultima_elipse is not None and isinstance(ultima_elipse, Ellipse):
             s_x = tamano
             s_y = tamano
+            relacion_aspecto_original = ultima_elipse.width / ultima_elipse.height
             ultima_elipse.set_width(2 * s_x)
             ultima_elipse.set_height(2 * s_y)
+            if relacion_aspecto_original != 1:
+                ultima_elipse.set_width(2 * s_x * relacion_aspecto_original)
+                ultima_elipse.set_height(2 * s_y * relacion_aspecto_original)
+                # Verifica si la elipse se convirtió en un círculo
+                if ultima_elipse.width == ultima_elipse.height:
+                    # La elipse se convirtió en un círculo, así que la escalamos de nuevo
+                    ultima_elipse.set_width(2 * s_x)
+                    ultima_elipse.set_height(2 * s_y * relacion_aspecto_original)
+
     elif cuadrado_activado:  # Agregar lógica para cambiar el tamaño del cuadrado
         lado = tamano
         if ultimo_cuadrado is not None:
             ultimo_cuadrado.set_width(lado)
             ultimo_cuadrado.set_height(lado)
     canvas.draw()
+
 
 
 
@@ -807,6 +877,8 @@ canvas.mpl_connect('button_press_event', dibujar_circulo)
 canvas.mpl_connect('button_press_event', dibujando_elipse)
 
 canvas.mpl_connect('button_press_event', dibujar_cuadrado)
+
+canvas.mpl_connect('button_press_event', dibujar_pixel)
 
 
 # Crear un control deslizante para cambiar el tamaño de la figura (círculo o elipse)
