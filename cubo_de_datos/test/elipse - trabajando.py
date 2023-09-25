@@ -363,6 +363,42 @@ def graficar(x = None ,y= None):
                 else:
                     messagebox.showerror("Error",
                                         "Selecciona exactamente un círculo para graficar el promedio del espectro por píxel.")
+            elif cuadrado_activado:
+                if len(cuadrados_dibujados) == 1:
+                    cuadrado = cuadrados_dibujados[0]
+                    x_cuadrado, y_cuadrado = cuadrado.get_x(), cuadrado.get_y()
+                    lado_cuadrado = cuadrado.get_width()
+                    x1, x2 = int(x_cuadrado), int(x_cuadrado + lado_cuadrado)
+                    y1, y2 = int(y_cuadrado), int(y_cuadrado + lado_cuadrado)
+
+                    if 0 <= x1 < datos_cubo.shape[2] and 0 <= y1 < datos_cubo.shape[1] and \
+                            0 <= x2 < datos_cubo.shape[2] and 0 <= y2 < datos_cubo.shape[1]:
+                        espectro = datos_cubo[:, y1:y2, x1:x2]
+
+                        # Calcula el promedio del espectro por píxel dentro del área del cuadrado
+                        espectro_promedio = np.mean(espectro, axis=(1, 2))
+
+                        if not ventana_grafico_abierta:
+                            crear_ventana_grafico()
+                            linea_grafico, = axes_grafico.plot(espectro_promedio, lw=2)
+                            axes_grafico.set_xlabel('Frame')
+                            axes_grafico.set_ylabel('Intensidad')
+                            ventana_grafico_abierta = True
+                        else:
+                            linea_grafico.set_ydata(espectro_promedio)
+
+                        axes_grafico.set_xlim(0, len(espectro_promedio) - 1)
+                        axes_grafico.set_ylim(np.min(espectro_promedio) - 0.0002, np.max(espectro_promedio))
+
+                        # Actualiza el título del gráfico con la información del cuadrado y el promedio
+                        axes_grafico.set_title(
+                            f'Promedio del Espectro por píxel en el área cuadrada (Inicio: ({x1}, {y1}), Lado: {lado_cuadrado})')
+                        figura_grafico.canvas.draw()
+                    else:
+                        messagebox.showerror("Error", "Coordenadas del cuadrado fuera de los límites de la imagen.")
+                else:
+                    messagebox.showerror("Error",
+                                         "Selecciona exactamente un cuadrado para graficar el promedio del espectro por píxel.")
 
         except ValueError:
             messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
