@@ -100,6 +100,7 @@ def cargar_imagen_actual():
 def cargar_imagen():
     global imagen_actual
     imagen_actual = entrada_coord_z.get()
+    
     cargar_imagen_actual()
     actualizar_barra_desplazamiento()
     return imagen_actual

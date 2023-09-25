@@ -99,11 +99,31 @@ def cargar_imagen_actual():
     actualizar_etiqueta_coordenadas()
 
 
+#funcion para cargar imagen desde entrada de texto
+def cargar_imagen():
+    global imagen_actual
+    entry = int(entrada_coord_z.get())
+    if entry >= 1 and entry <= num_frames:
+        imagen_actual = entry - 1
+        cargar_imagen_actual()
+        actualizar_barra_desplazamiento()
+
 # Función para actualizar la etiqueta de coordenadas
 def actualizar_etiqueta_coordenadas():
     global coordenadas_label
+    global imagen_actual
+    global numero_imagen
+    global entero
+    numero_imagen = entrada_coord_z.get()  # Captura el valor como una cadena de caracteres
+    try:
+        entero = int(numero_imagen)  # Convierte la cadena en un entero
+    except ValueError:
+        tk.messagebox.showerror("Error", "¡Entrada no válida!")
+    entrada_coord_z.delete(0, tk.END)
+    entrada_coord_z.insert(1, imagen_actual+1)   
     if coordenadas_label is not None:
         coordenadas_label.config(text=f"Píxel Seleccionado: ({entrada_coord_x.get()}, {entrada_coord_y.get()})")
+
 
 # Función para cargar la imagen anterior
 def cargar_imagen_anterior():
@@ -136,7 +156,7 @@ def crear_ventana_grafico():
     if not ventana_grafico_abierta:
         ventana_grafico = Toplevel()
         ventana_grafico.title("Gráfico del Espectro")
-        figura_grafico, axes_grafico = plt.subplots(figsize=(6, 4))
+        figura_grafico, axes_grafico = plt.subplots(figsize=(8, 5))
         canvas_grafico = FigureCanvasTkAgg(figura_grafico, master=ventana_grafico)
         canvas_grafico.get_tk_widget().pack()
         ventana_grafico.protocol("WM_DELETE_WINDOW", cerrar_ventana_grafico)
@@ -860,6 +880,18 @@ etiqueta_coord_y.grid(row=1, column=3, padx=5, pady=5, sticky="e")
 
 entrada_coord_y = tk.Entry(ventana)
 entrada_coord_y.grid(row=1, column=4, padx=5, pady=5)
+
+##entry para ir directamente a un frame
+etiqueta_coord_z = tk.Label(ventana, text="imagen:")
+etiqueta_coord_z.grid(row=2, column=3, padx=5, pady=5, sticky="e")
+
+entrada_coord_z = tk.Entry(ventana)
+entrada_coord_z.grid(row=2, column=4, padx=5, pady=5)
+
+entrada_coord_z.insert(0, "0")
+
+boton_frame = tk.Button(ventana, text="ir a imagen", command=cargar_imagen)
+boton_frame.grid(row=2, column=4, columnspan=5, padx=5, pady=10)
 
 boton_graficar = tk.Button(ventana, text="Graficar", command=graficar, bg="green", fg="white", state=tk.DISABLED)
 boton_graficar.grid(row=2, column=0, columnspan=5, padx=5, pady=10)
