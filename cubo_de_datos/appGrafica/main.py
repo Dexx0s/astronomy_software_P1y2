@@ -48,7 +48,7 @@ graphics_collection = base_datos["Graphics"]
 comments_collection = base_datos["Comments"]
 
 # poner 1 para activar base de datos
-switch_pymongo=0
+switch_pymongo = 0
 
 
 # Función para cargar la imagen FITS actual
@@ -85,6 +85,7 @@ def cargar_siguiente_imagen():
         cargar_imagen_actual()
         actualizar_barra_desplazamiento()
 
+
 # Función para cargar la imagen actual en función del valor de la barra de desplazamiento
 def cargar_imagen_desde_barra(event):
     global imagen_actual
@@ -92,6 +93,7 @@ def cargar_imagen_desde_barra(event):
     if nueva_posicion >= 1 and nueva_posicion <= num_frames:
         imagen_actual = nueva_posicion - 1
         cargar_imagen_actual()
+
 
 # Función para crear una ventana emergente para el gráfico
 def crear_ventana_grafico():
@@ -117,6 +119,7 @@ def cerrar_ventana_grafico():
         figura_grafico.canvas.draw()
         ventana_grafico_abierta = False
 
+
 def iniciar_arrastre(event):
     global dragging
     dragging = True
@@ -125,9 +128,11 @@ def iniciar_arrastre(event):
     last_mouse_x = event.x
     last_mouse_y = event.y
 
+
 def detener_arrastre(event):
     global dragging
     dragging = False
+
 
 # Función para manejar el arrastre de la imagen
 def mover_imagen(event):
@@ -156,7 +161,6 @@ def mover_imagen(event):
         # Actualizar las coordenadas del ratón
         last_mouse_x = event.x
         last_mouse_y = event.y
-
 
 
 def remove_nans(extension_valida):
@@ -200,7 +204,6 @@ def abrir_archivo():
                 if respuesta == 'yes':
                     data = remove_nans(extension_valida)
 
-
             header = extension_valida.header
             print(header)  # Imprimir el encabezado para ver la información
 
@@ -224,20 +227,20 @@ def abrir_archivo():
             if switch_pymongo:
                 # Base de datos = File_Collection
                 file_info = {
-                    "Data_id": data_id,                          # Identificador
-                    "File_name": nombre_archivo,                 # File
+                    "Data_id": data_id,  # Identificador
+                    "File_name": nombre_archivo,  # File
                     "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
-                    "Hora": fecha_actual.strftime("%H:%M:%S")    # Fecha segun Hora
+                    "Hora": fecha_actual.strftime("%H:%M:%S")  # Fecha segun Hora
                 }
                 file_collection.insert_one(file_info)
-                    
+
                 # Base de datos = Data_Collection
                 data_info = {
-                    "Data_id": data_id,                          # Identificador
-                    "Filename": nombre_archivo,                  # File
-                    "Header": tipo_extension,                    # Encabezado
+                    "Data_id": data_id,  # Identificador
+                    "Filename": nombre_archivo,  # File
+                    "Header": tipo_extension,  # Encabezado
                     "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
-                    "Hora": fecha_actual.strftime("%H:%M:%S"),   # Fecha segun Hora
+                    "Hora": fecha_actual.strftime("%H:%M:%S"),  # Fecha segun Hora
                     "Data": str(datos_cubo)  # Datos
                 }
                 data_collection.insert_one(data_info)
@@ -248,8 +251,6 @@ def abrir_archivo():
     else:
         # Si no se selecciona un archivo FITS válido, deshabilita el botón "Graficar"
         boton_graficar.config(state=tk.DISABLED)
-
-
 
 
 # tipos de regiones
@@ -323,13 +324,13 @@ def graficar():
                         tipo_extension = extension_valida.name
                         selected_pixel = f"({x}, {y})"
                         graphics_info = {
-                            "Graphic_id": graphic_id,                     # Identificador unico
-                            "Header": tipo_extension,                     # Nombre archivo fits
+                            "Graphic_id": graphic_id,  # Identificador unico
+                            "Header": tipo_extension,  # Nombre archivo fits
                             "Imagen": imagen_actual + 1,
-                            "Pixeles": selected_pixel,                    # Pixeles segun x e y
-                            "Fecha": fecha_actual.strftime("%d/%m/%Y"),   # Fecha segun día/mes/año
-                            "Hora": fecha_actual.strftime("%H:%M:%S"),    # Fecha segun Hora
-                            "Data": str(espectro)                         # Representacion de los datos
+                            "Pixeles": selected_pixel,  # Pixeles segun x e y
+                            "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
+                            "Hora": fecha_actual.strftime("%H:%M:%S"),  # Fecha segun Hora
+                            "Data": str(espectro)  # Representacion de los datos
                         }
                         graphics_collection.insert_one(graphics_info)
 
@@ -339,6 +340,7 @@ def graficar():
                 messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
         except ValueError:
             messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
+
 
 # Función para manejar el clic del ratón en la imagen
 def on_image_click(event):
@@ -385,12 +387,15 @@ def on_scroll(event):
 
         except Exception as e:
             print(f"Error en el zoom: {e}")
+
+
 # Función para actualizar la barra de desplazamiento
 def actualizar_barra_desplazamiento():
     global barra_desplazamiento, num_frames
     if barra_desplazamiento is not None:
         barra_desplazamiento.config(from_=1, to=num_frames, command=cargar_imagen_desde_barra)
         barra_desplazamiento.set(imagen_actual + 1)
+
 
 def cerrar_ventana_principal():
     ventana.quit()  # Finalizar el bucle principal de Tkinter
@@ -455,6 +460,5 @@ fig.canvas.mpl_connect('button_press_event', on_image_click)
 
 # Configurar el evento de clic del ratón en la imagen
 fig.canvas.mpl_connect('button_press_event', on_image_click)
-
 
 ventana.mainloop()
