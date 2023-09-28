@@ -56,13 +56,9 @@ radio = 5  # Valor predeterminado del radio del círculo
 ultimo_circulo = None  # Variable para el último círculo dibujado
 
 # Variables Elipse
-e_inicio = None
-e_fin = None
 ultima_elipse = None
-s_x = 1.0
-s_y = 1.0
 elipses_dibujadas = []  # Lista para almacenar los círculos dibujados
-
+dibujando_elipse = False
 # Variables para el circulo
 centro_x, centro_y = None, None
 dibujando_circulo = False
@@ -304,19 +300,19 @@ def abrir_archivo():
 
 
 # Función para graficar el espectro del píxel seleccionado
-def graficar(x = None ,y= None):
+def graficar(x=None,y=None, ancho=None, alto= None, angulo = None):
     global circulos_dibujados, datos_cubo, figura_grafico, axes_grafico, ventana_grafico_abierta, linea_grafico
     global linea_grafico, figura_grafico, axes_grafico, ventana_grafico, ventana_grafico_abierta
     if datos_cubo is not None:
         try:
-
             if pixel_activado:
+                print("iff")
                 if x and y:
+                    print("iff")
                     x = int(x)
                     y = int(y)
                     if 0 <= x < datos_cubo.shape[2] and 0 <= y < datos_cubo.shape[1]:
                         espectro = datos_cubo[:, y, x]
-
                         if not ventana_grafico_abierta:
                             crear_ventana_grafico()
                             linea_grafico, = axes_grafico.plot(espectro, lw=2)
@@ -420,18 +416,55 @@ def graficar(x = None ,y= None):
                     messagebox.showerror("Error",
                                          "Selecciona exactamente un cuadrado para graficar el promedio del espectro por píxel.")
 
+            elif eclipse_activado:
+                print("grafico")
+                if len(elipses_dibujadas) == 1:
+                    elipse = elipses_dibujadas[0]
+                    centro_x, centro_y = elipse.center
+                    ancho = elipse.width
+                    alto = elipse.height
+
+                    # Calcula la máscara para el área dentro de la elipse
+                    y, x = np.ogrid[-centro_y:datos_cubo.shape[1] - centro_y, -centro_x:datos_cubo.shape[2] - centro_x]
+                    mascara = ((x / (ancho / 2)) ** 2 + (y / (alto / 2)) ** 2) <= 1
+                    espectro = datos_cubo[:, mascara]
+
+                    # Calcula el promedio del espectro por píxel dentro del área de la elipse
+                    espectro_promedio = np.mean(espectro, axis=1)
+
+                    if not ventana_grafico_abierta:
+                        crear_ventana_grafico()
+                        linea_grafico, = axes_grafico.plot(espectro_promedio, lw=2)
+                        axes_grafico.set_xlabel('Frame')
+                        axes_grafico.set_ylabel('Intensidad')
+                        ventana_grafico_abierta = True
+                    else:
+                        linea_grafico.set_ydata(espectro_promedio)
+
+                    axes_grafico.set_xlim(0, len(espectro_promedio) - 1)
+                    axes_grafico.set_ylim(np.min(espectro_promedio) - 0.0002, np.max(espectro_promedio))
+
+                    # Actualiza el título del gráfico con la información de la elipse y el promedio
+                    axes_grafico.set_title(
+                        f'Promedio del Espectro por píxel en el área de la elipse (Centro: ({centro_x}, {centro_y}), Ancho: {ancho}, Alto: {alto})')
+                    figura_grafico.canvas.draw()
+                else:
+                    messagebox.showerror("Error",
+                                         "Selecciona exactamente una elipse para graficar el promedio del espectro por píxel.")
+
+
         except ValueError:
             messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
 
 
 # Cambia esta parte en la función on_image_click
 def on_image_click(event):
-    # Global circulo, elipse
+    # Global circulo y elipse
     global circulo_activado, eclipse_activado
     # Global Circulo
     global centro_x, centro_y, radio, circulo_dibujado, pixel_activado, movimiento_activado, dibujando_circulo, ultimo_clic
     # Global Elipse
-    global centro_elipse_x, centro_elipse_y, s_x, s_y, elipse_dibujada, pixel_activado, movimiento_activado, dibujando_elipse, ultimo_clic, e_inicio, e_fin
+    global centro_x, centro_y, ancho, alto, elipse_dibujada, pixel_activado, movimiento_activado, dibujando_elipse, ultimo_clic
 
     if circulo_activado:
         # MECANISMO PARA CÍRCULO
@@ -485,58 +518,41 @@ def on_image_click(event):
             dibujando_elipse = not dibujando_elipse
             if not dibujando_elipse:
                 # Restablecer variables si se cancela el dibujo de la elipse
-                centro_elipse_x, centro_elipse_y, s_x, s_y = None, None, None, None
+                centro_x, centro_y, ancho, alto = None, None, None, None
             # Actualizar el estado del último clic
             ultimo_clic = (event.x, event.y)
 
             if dibujando_elipse:
-                if centro_elipse_x is None and centro_elipse_y is None:
+                if centro_x is None and centro_y is None:
                     # Primer clic: establece el centro de la elipse
-                    centro_elipse_x, centro_elipse_y = event.x, event.y
+                    centro_x, centro_y = event.x, event.y
                 else:
-                    # Segundo clic: establece los semiejes y dibuja la elipse
-                    e_fin = (event.x, event.y)
-                    dibujar_elipse_segun_puntos((centro_elipse_x, centro_elipse_y), e_fin)
+                    # Segundo clic: calcula el ancho, alto y dibuja la elipse
+                    ancho = abs(event.x - centro_x) * 2
+                    alto = abs(event.y - centro_y) * 2
+                    dibujar_elipse(event)
                     # Restablece las variables de la elipse después de dibujarla
-                    centro_elipse_x, centro_elipse_y, s_x, s_y = None, None, None, None
-
+                    centro_x, centro_y, ancho, alto = None, None, None, None
 
 # Funcion para dibujar una elipse
-def dibujando_elipse(event):
-    global e_inicio, e_fin, ultima_elipse
-
+def dibujar_elipse(event):
+    global eclipse_activado, ultima_elipse
+    # Graficar
+    global centro_x, centro_y, ancho_elipse, alto_elipse, angulo_elipse
     if eclipse_activado and event.xdata is not None and event.ydata is not None:
         x, y = event.xdata, event.ydata
-        if e_inicio is None:
-            # Primer clic: establece el punto de inicio de la elipse
-            e_inicio = (x, y)
-        else:
-            # Segundo clic: establece el punto final de la elipse
-            # Dibuja la elipse
-            e_fin = (x, y)
-            dibujar_elipse_segun_puntos(e_inicio, e_fin)
+        ancho = 20
+        alto = 10
+        elipse = Ellipse((x,y), width= ancho, height= alto, angle=0, color='blue', fill= False)
+        ax.add_patch(elipse)
+        elipses_dibujadas.append(elipse)
+        ultima_elipse = elipse
 
-            # Restablece las variables de la elipse después de dibujarla
-            e_inicio = None
-            e_fin = None
-def dibujar_elipse_segun_puntos(inicio, fin):
-    global ultima_elipse
-    s_x = 1.0
-    s_y = 1.0
-    x1, y1 = inicio
-    x2, y2 = fin
-
-    # Calcula los semiejes a y b
-    s_x = abs(e_fin[0] - e_inicio[0]) / 2
-    s_y = abs(e_fin[1] - e_inicio[1]) / 2
-    # Centro de la elipse
-    centro_elipse_x = (x1 + x2) / 2
-    centro_elipse_y = (y1 + y2) / 2
-
-    elipse = Ellipse((centro_elipse_x, centro_elipse_y), s_x, s_y, color='blue', fill=False)
-    ax.add_patch(elipse)
-    elipses_dibujadas.append(elipse)  # Agrega la elipse a la lista de elipses dibujadas
-    ultima_elipse = elipse  # Actualiza la última elipse dibujada
+        # Para el grafico
+        centro_x, centro_y = elipse.center
+        ancho_elipse = elipse.width
+        alto_elipse = elipse.height
+        angulo_elipse = elipse.angle
     canvas.draw()
 
 
@@ -569,8 +585,6 @@ def dibujar_circulo(event):
         # Parametros para la funcion graficar
         centro_x, centro_y = circulo.center
         radio_circulo = circulo.radius
-        graficar(x=centro_x, y=centro_y, radio=radio_circulo)
-
     canvas.draw()
 
 def dibujar_pixel(event):
@@ -585,7 +599,9 @@ def dibujar_pixel(event):
         ax.add_patch(punto)
         puntos_dibujados.append(punto)
         ultimo_punto = punto
-        # Entrega los parametros de los puntos segun el eje x e y
+        # Actualiza las variables globales para su uso posterior al presionar el botón de graficar
+        x_pixel, y_pixel = x, y
+        # Falta por implementar
         graficar(x,y)
 
     canvas.draw()
@@ -827,22 +843,6 @@ def tamano_figura(val):
         radio = float(val)
         if ultimo_circulo is not None:
             ultimo_circulo.set_radius(radio)
-    elif eclipse_activado:
-        if ultima_elipse is not None and isinstance(ultima_elipse, Ellipse):
-            s_x = tamano
-            s_y = tamano
-            relacion_aspecto_original = ultima_elipse.width / ultima_elipse.height
-            ultima_elipse.set_width(2 * s_x)
-            ultima_elipse.set_height(2 * s_y)
-            if relacion_aspecto_original != 1:
-                ultima_elipse.set_width(2 * s_x * relacion_aspecto_original)
-                ultima_elipse.set_height(2 * s_y * relacion_aspecto_original)
-                # Verifica si la elipse se convirtió en un círculo
-                if ultima_elipse.width == ultima_elipse.height:
-                    # La elipse se convirtió en un círculo, así que la escalamos de nuevo
-                    ultima_elipse.set_width(2 * s_x)
-                    ultima_elipse.set_height(2 * s_y * relacion_aspecto_original)
-
     elif cuadrado_activado:  # Agregar lógica para cambiar el tamaño del cuadrado
         lado = tamano
         if ultimo_cuadrado is not None:
@@ -851,7 +851,21 @@ def tamano_figura(val):
     canvas.draw()
 
 
-
+def tamano_eclipse(val):
+    global ultima_elipse
+    # Obtiene los valores de las barras de desplazamiento de la elipse
+    an = elipse_ancho.get()
+    al = elipse_alto.get()
+    # Obtiene el valor de la barra de desplazamiento de rotación
+    rotacion = rotacion_elipse.get()
+    if eclipse_activado:
+        if ultima_elipse is not None:
+            # Ajusta el ancho y alto de la elipse
+            ultima_elipse.set_width(an)
+            ultima_elipse.set_height(al)
+            # Ajusta la rotación de la elipse
+            ultima_elipse.angle = rotacion
+        canvas.draw()
 
 
 ventana = tk.Tk()
@@ -942,7 +956,7 @@ fig.canvas.mpl_connect('button_press_event', on_image_click)
 canvas.mpl_connect('button_press_event', dibujar_circulo)
 
 # Configurar el evento de clic izquierdo en el canvas para dibujar una elipse
-canvas.mpl_connect('button_press_event', dibujando_elipse)
+canvas.mpl_connect('button_press_event', dibujar_elipse)
 
 canvas.mpl_connect('button_press_event', dibujar_cuadrado)
 
@@ -953,5 +967,17 @@ canvas.mpl_connect('button_press_event', dibujar_pixel)
 tamano_scale = Scale(ventana, from_=1, to=100, orient="horizontal", label="Tamaño de la Figura", command=tamano_figura, width=20)
 tamano_scale.grid(row=3, column=8, padx=5, pady=10)  # Ajusta la ubicación del control deslizante
 
+# Crea los controles deslizantes para ancho, alto y rotación de la elipse
+# Coloca los controles deslizantes en la ventana packs
+elipse_ancho = tk.Scale(ventana, from_=1, to=100, orient="horizontal", label="Ancho Elipse")
+elipse_ancho.grid(row=4, column=5, padx=5, pady=10)
+elipse_alto = tk.Scale(ventana, from_=1, to=100, orient="horizontal", label="Alto Elipse")
+elipse_alto.grid(row=4, column=6, padx=5, pady=10)
+rotacion_elipse = tk.Scale(ventana, from_=0, to=180, orient="horizontal", label="Rotación Elipse")
+rotacion_elipse.grid(row=4, column=7, padx=5, pady=10)
+# Configura las barras de desplazamiento para llamar a las funciones adecuadas cuando cambien los valores
+elipse_ancho.config(command=tamano_eclipse)
+elipse_alto.config(command=tamano_eclipse)
+rotacion_elipse.config(command=tamano_eclipse)
 
 ventana.mainloop()
