@@ -23,7 +23,13 @@ matplotlib.use("TkAgg")
 # Variables para la creación del área libre
 area_libre_activa = False
 puntos = []
+lineas_figura = []
+puntos_dibujados = []
+
 ###########para lo de el area libre####################################
+
+
+
 
 
 # Variables globales
@@ -290,52 +296,44 @@ def abrir_archivo():
 
 
 # Función para graficar el espectro del píxel seleccionado
-def graficar():
+def graficar(x=None,y=None, ancho=None, alto= None, angulo = None):
+    global circulos_dibujados, datos_cubo, figura_grafico, axes_grafico, ventana_grafico_abierta, linea_grafico
     global linea_grafico, figura_grafico, axes_grafico, ventana_grafico, ventana_grafico_abierta
     if datos_cubo is not None:
         try:
-            # Obtener las coordenadas del píxel desde las entradas
-            x_str = entrada_coord_x.get()
-            y_str = entrada_coord_y.get()
+            if pixel_activado:
+                print("iff")
+                if x and y:
+                    print("iff")
+                    x = int(x)
+                    y = int(y)
+                    if 0 <= x < datos_cubo.shape[2] and 0 <= y < datos_cubo.shape[1]:
+                        espectro = datos_cubo[:, y, x]
+                        if not ventana_grafico_abierta:
+                            crear_ventana_grafico()
+                            linea_grafico, = axes_grafico.plot(espectro, lw=2)
+                            axes_grafico.set_xlabel('Frame')
+                            axes_grafico.set_ylabel('Intensidad')
+                            ventana_grafico_abierta = True
+                        else:
+                            # Si ya existe la línea, actualiza sus datos
+                            linea_grafico.set_ydata(espectro)
 
-            # Verificar que las coordenadas estén dentro de los límites
-            if x_str and y_str:
-                x = int(x_str)
-                y = int(y_str)
-                if 0 <= x < datos_cubo.shape[2] and 0 <= y < datos_cubo.shape[1]:
-                    espectro = datos_cubo[:, y, x]
+                        # Establecer los límites de los ejes x e y
+                        axes_grafico.set_xlim(0, len(espectro) - 1)
+                        axes_grafico.set_ylim(-0.0002, max(espectro))
 
-                    if not ventana_grafico_abierta:
-                        crear_ventana_grafico()
-                        linea_grafico, = axes_grafico.plot(espectro, lw=2)
-                        axes_grafico.set_xlabel('Frame')
-                        axes_grafico.set_ylabel('Intensidad')
-                        ventana_grafico_abierta = True
+                        # Actualiza el título del gráfico con las coordenadas
+                        axes_grafico.set_title(f'Espectro del píxel ({x}, {y})')
+                        figura_grafico.canvas.draw()
+                        fecha_actual = datetime.now()
                     else:
-                        # Si ya existe la línea, actualiza sus datos
-                        linea_grafico.set_ydata(espectro)
-
-                    # Establecer los límites de los ejes x e y
-                    axes_grafico.set_xlim(0, len(espectro) - 1)
-                    axes_grafico.set_ylim(-0.0002, max(espectro))
-
-                    # Actualiza el título del gráfico con las coordenadas
-                    axes_grafico.set_title(f'Espectro del píxel ({x}, {y})')
-                    figura_grafico.canvas.draw()
-                    fecha_actual = datetime.now()
-                    with fits.open(archivo_fits) as hdul:
-                        extension_valida = next(
-                            (ext for ext in hdul if ext.name in ["PRIMARY", "IMAGE", "DATA CUBE", "SPECTRUM"]), None)
-                        if extension_valida is None:
-                            raise ValueError(
-                                "No es posible abrir este tipo de archivo FITS, dado que no contiene imágenes.")
+                        messagebox.showerror("Error", "Coordenadas fuera de los límites de la imagen.")
 
                     # Base de datos = Graphics_Colletion
-                    tipo_extension = extension_valida.name
                     selected_pixel = f"({x}, {y})"
                     graphics_info = {
                         "Graphic_id": graphic_id,                     # Identificador unico
-                        "Header": tipo_extension,                     # Nombre archivo fits
                         "Imagen": imagen_actual + 1,
                         "Pixeles": selected_pixel,                    # Pixeles segun x e y
                         "Fecha": fecha_actual.strftime("%d/%m/%Y"),   # Fecha segun día/mes/año
@@ -345,29 +343,154 @@ def graficar():
                     graphics_collection.insert_one(graphics_info)
 
                 else:
-                    messagebox.showerror("Error", "Coordenadas fuera de los límites de la imagen.")
-            else:
-                messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
+                    messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
+            elif circulo_activado:
+                if len(circulos_dibujados) == 1:
+                    circulo = circulos_dibujados[0]
+                    centro_x, centro_y = circulo.center
+                    radio = circulo.radius
+                    y, x = np.ogrid[-centro_y:datos_cubo.shape[1] - centro_y, -centro_x:datos_cubo.shape[2] - centro_x]
+                    mascara = x ** 2 + y ** 2 <= radio ** 2
+                    espectro = datos_cubo[:, mascara]
+
+                    # Calcula el promedio del espectro por píxel dentro del área circular
+                    espectro_promedio = np.mean(espectro, axis=1)
+
+                    if not ventana_grafico_abierta:
+                        crear_ventana_grafico()
+                        linea_grafico, = axes_grafico.plot(espectro_promedio, lw=2)
+                        axes_grafico.set_xlabel('Frame')
+                        axes_grafico.set_ylabel('Intensidad')
+                        ventana_grafico_abierta = True
+                    else:
+                        linea_grafico.set_ydata(espectro_promedio)
+
+                    axes_grafico.set_xlim(0, len(espectro_promedio) - 1)
+                    axes_grafico.set_ylim(np.min(espectro_promedio) - 0.0002, np.max(espectro_promedio))
+
+                    # Actualiza el título del gráfico con la información del círculo y el promedio
+                    axes_grafico.set_title(
+                        f'Promedio del Espectro por píxel en el área circular (Centro: ({centro_x}, {centro_y}), Radio: {radio})')
+                    figura_grafico.canvas.draw()
+                else:
+                    messagebox.showerror("Error",
+                                        "Selecciona exactamente un círculo para graficar el promedio del espectro por píxel.")
+            elif cuadrado_activado:
+                if len(cuadrados_dibujados) == 1:
+                    cuadrado = cuadrados_dibujados[0]
+                    x_cuadrado, y_cuadrado = cuadrado.get_x(), cuadrado.get_y()
+                    lado_cuadrado = cuadrado.get_width()
+                    x1, x2 = int(x_cuadrado), int(x_cuadrado + lado_cuadrado)
+                    y1, y2 = int(y_cuadrado), int(y_cuadrado + lado_cuadrado)
+
+                    if 0 <= x1 < datos_cubo.shape[2] and 0 <= y1 < datos_cubo.shape[1] and \
+                            0 <= x2 < datos_cubo.shape[2] and 0 <= y2 < datos_cubo.shape[1]:
+                        espectro = datos_cubo[:, y1:y2, x1:x2]
+
+                        # Calcula el promedio del espectro por píxel dentro del área del cuadrado
+                        espectro_promedio = np.mean(espectro, axis=(1, 2))
+
+                        if not ventana_grafico_abierta:
+                            crear_ventana_grafico()
+                            linea_grafico, = axes_grafico.plot(espectro_promedio, lw=2)
+                            axes_grafico.set_xlabel('Frame')
+                            axes_grafico.set_ylabel('Intensidad')
+                            ventana_grafico_abierta = True
+                        else:
+                            linea_grafico.set_ydata(espectro_promedio)
+
+                        axes_grafico.set_xlim(0, len(espectro_promedio) - 1)
+                        axes_grafico.set_ylim(np.min(espectro_promedio) - 0.0002, np.max(espectro_promedio))
+
+                        # Actualiza el título del gráfico con la información del cuadrado y el promedio
+                        axes_grafico.set_title(
+                            f'Promedio del Espectro por píxel en el área cuadrada (Inicio: ({x1}, {y1}), Lado: {lado_cuadrado})')
+                        figura_grafico.canvas.draw()
+                    else:
+                        messagebox.showerror("Error", "Coordenadas del cuadrado fuera de los límites de la imagen.")
+                else:
+                    messagebox.showerror("Error",
+                                         "Selecciona exactamente un cuadrado para graficar el promedio del espectro por píxel.")
+
+            elif eclipse_activado:
+                print("grafico")
+                if len(elipses_dibujadas) == 1:
+                    elipse = elipses_dibujadas[0]
+                    centro_x, centro_y = elipse.center
+                    ancho = elipse.width
+                    alto = elipse.height
+
+                    # Calcula la máscara para el área dentro de la elipse
+                    y, x = np.ogrid[-centro_y:datos_cubo.shape[1] - centro_y, -centro_x:datos_cubo.shape[2] - centro_x]
+                    mascara = ((x / (ancho / 2)) ** 2 + (y / (alto / 2)) ** 2) <= 1
+                    espectro = datos_cubo[:, mascara]
+
+                    # Calcula el promedio del espectro por píxel dentro del área de la elipse
+                    espectro_promedio = np.mean(espectro, axis=1)
+
+                    if not ventana_grafico_abierta:
+                        crear_ventana_grafico()
+                        linea_grafico, = axes_grafico.plot(espectro_promedio, lw=2)
+                        axes_grafico.set_xlabel('Frame')
+                        axes_grafico.set_ylabel('Intensidad')
+                        ventana_grafico_abierta = True
+                    else:
+                        linea_grafico.set_ydata(espectro_promedio)
+
+                    axes_grafico.set_xlim(0, len(espectro_promedio) - 1)
+                    axes_grafico.set_ylim(np.min(espectro_promedio) - 0.0002, np.max(espectro_promedio))
+
+                    # Actualiza el título del gráfico con la información de la elipse y el promedio
+                    axes_grafico.set_title(
+                        f'Promedio del Espectro por píxel en el área de la elipse (Centro: ({centro_x}, {centro_y}), Ancho: {ancho}, Alto: {alto})')
+                    figura_grafico.canvas.draw()
+                else:
+                    messagebox.showerror("Error",
+                                         "Selecciona exactamente una elipse para graficar el promedio del espectro por píxel.")
+
+            elif area_libre_activa:
+                if len(puntos) >= 3:  # Necesitamos al menos 3 puntos para formar un polígono
+                    # Crea un objeto Path a partir de los puntos
+                    path = matplotlib.path.Path(puntos)
+
+                    # Crea una grilla de coordenadas
+                    y_grid, x_grid = np.mgrid[0:datos_cubo.shape[1], 0:datos_cubo.shape[2]]
+                    coords = np.column_stack((x_grid.ravel(), y_grid.ravel()))
+
+                    # Usa el objeto Path para determinar qué píxeles están dentro del polígono
+                    mascara = path.contains_points(coords).reshape(datos_cubo.shape[1], datos_cubo.shape[2])
+
+                    # Calcula el espectro de los píxeles dentro del polígono
+                    espectro = datos_cubo[:, mascara]
+
+                    # Calcula el promedio del espectro por píxel dentro del área del polígono
+                    espectro_promedio = np.mean(espectro, axis=1)
+
         except ValueError:
             messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
+
+
 
 ###########para lo de el area libre####################################
 # Función para conectar los puntos y formar la figura
 def conectar_puntos():
-    global puntos
+    global puntos, lineas_figura  # Asegúrate de usar la variable global lineas_figura
     if len(puntos) >= 2:
         # Conectar los puntos en orden
         for i in range(len(puntos) - 1):
             x1, y1 = puntos[i]
             x2, y2 = puntos[i + 1]
-            ax.plot([x1, x2], [y1, y2], 'ro-')  # Conecta los puntos con una línea roja
+            linea = ax.plot([x1, x2], [y1, y2], 'ro-')  # Conecta los puntos con una línea roja
+            lineas_figura.append(linea[0])  # Agrega la línea a la lista
 
         # Conectar el último punto con el primer punto para cerrar el área
         x1, y1 = puntos[-1]
         x2, y2 = puntos[0]
-        ax.plot([x1, x2], [y1, y2], 'ro-')  # Conecta el último punto con el primer punto
+        linea = ax.plot([x1, x2], [y1, y2], 'ro-')  # Conecta el último punto con el primer punto
+        lineas_figura.append(linea[0])  # Agrega la línea a la lista
 
         canvas.draw()
+
 # Función para activar/desactivar el modo de área libre
 def alternar_area_libre():
     global area_libre_activa, puntos
@@ -393,7 +516,8 @@ def on_image_click(event):
         if area_libre_activa:
             if not circulo_activado:  # Modo "Área Libre"
                 puntos.append((x, y))
-                ax.plot(x, y, 'ro', markersize=5)  # 'ro' representa un punto rojo
+                punto = ax.plot(x, y, 'ro', markersize=5)  # 'ro' representa un punto rojo
+                puntos_dibujados.append(punto[0])  # Agrega el punto a la lista de puntos dibujados
                 canvas.draw()
             elif pixel_activado:  # Modo de selección de píxeles
                 entrada_coord_x.delete(0, tk.END)
@@ -673,8 +797,11 @@ def cerrar_ventana_principal():
     ventana.quit()  # Finalizar el bucle principal de Tkinter
     ventana.destroy()  # Destruir la ventana principal
 
+
+# ...
+
 def borrar_figuras():
-    global cuadrados_dibujados, ultima_elipse, ultimo_circulo
+    global cuadrados_dibujados, ultima_elipse, ultimo_circulo, lineas_figura, puntos
 
     if circulo_activado:
         for circulo in circulos_dibujados:
@@ -688,7 +815,20 @@ def borrar_figuras():
         for cuadrado in cuadrados_dibujados:
             cuadrado.remove()
         cuadrados_dibujados.clear()  # Limpia la lista de cuadrados dibujados
+
+    # Limpia las líneas de la figura creada mediante la unión de puntos
+    for linea in lineas_figura:
+        linea.remove()
+    lineas_figura.clear()  # Limpia la lista de líneas de la figura
+
+    # Limpia los puntos que se agregaron durante el dibujo del área libre
+    for punto in puntos_dibujados:
+        punto.remove()
+    puntos_dibujados.clear()  # Limpia la lista de puntos dibujados
+    puntos.clear()
+
     canvas.draw()
+
 
 
 

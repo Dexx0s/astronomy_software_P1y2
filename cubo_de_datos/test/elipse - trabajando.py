@@ -42,7 +42,11 @@ ultimo_clic = None
 # Variables para el seguimiento del arrastre del ratón
 dragging = False
 
-
+# Variables para la creación del área libre
+area_libre_activa = False
+puntos = []
+lineas_figura = []
+puntos_dibujados = []
 
 # Variables relacionadas con Matplotlib
 fig = None
@@ -116,7 +120,7 @@ def actualizar_etiqueta_coordenadas():
     except ValueError:
         tk.messagebox.showerror("Error", "¡Entrada no válida!")
     entrada_coord_z.delete(0, tk.END)
-    entrada_coord_z.insert(1, imagen_actual+1)   
+    entrada_coord_z.insert(1, imagen_actual+1)
     if coordenadas_label is not None:
         coordenadas_label.config(text=f"Píxel Seleccionado: ({entrada_coord_x.get()}, {entrada_coord_y.get()})")
 
@@ -452,6 +456,40 @@ def graficar(x=None,y=None, ancho=None, alto= None, angulo = None):
                     messagebox.showerror("Error",
                                          "Selecciona exactamente una elipse para graficar el promedio del espectro por píxel.")
 
+            elif area_libre_activa:
+                if len(puntos) >= 3:  # Necesitamos al menos 3 puntos para formar un polígono
+                    # Crea un objeto Path a partir de los puntos
+                    path = matplotlib.path.Path(puntos)
+
+                    # Crea una grilla de coordenadas
+                    y_grid, x_grid = np.mgrid[0:datos_cubo.shape[1], 0:datos_cubo.shape[2]]
+                    coords = np.column_stack((x_grid.ravel(), y_grid.ravel()))
+
+                    # Usa el objeto Path para determinar qué píxeles están dentro del polígono
+                    mascara = path.contains_points(coords).reshape(datos_cubo.shape[1], datos_cubo.shape[2])
+
+                    # Calcula el espectro de los píxeles dentro del polígono
+                    espectro = datos_cubo[:, mascara]
+
+                    # Calcula el promedio del espectro por píxel dentro del área del polígono
+                    espectro_promedio = np.mean(espectro, axis=1)
+
+                    if not ventana_grafico_abierta:
+                        crear_ventana_grafico()
+                        linea_grafico, = axes_grafico.plot(espectro_promedio, lw=2)
+                        axes_grafico.set_xlabel('Frame')
+                        axes_grafico.set_ylabel('Intensidad')
+                        ventana_grafico_abierta = True
+                    else:
+                        linea_grafico.set_ydata(espectro_promedio)
+
+                    axes_grafico.set_xlim(0, len(espectro_promedio) - 1)
+                    axes_grafico.set_ylim(np.min(espectro_promedio) - 0.0002, np.max(espectro_promedio))
+
+                    # Actualiza el título del gráfico con la información del polígono y el promedio
+                    axes_grafico.set_title(
+                        f'Promedio del Espectro por píxel en el área del polígono (Puntos: {len(puntos)})')
+                    figura_grafico.canvas.draw()
 
         except ValueError:
             messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
@@ -459,80 +497,88 @@ def graficar(x=None,y=None, ancho=None, alto= None, angulo = None):
 
 # Cambia esta parte en la función on_image_click
 def on_image_click(event):
-    # Global circulo y elipse
-    global circulo_activado, eclipse_activado
-    # Global Circulo
-    global centro_x, centro_y, radio, circulo_dibujado, pixel_activado, movimiento_activado, dibujando_circulo, ultimo_clic
-    # Global Elipse
-    global centro_x, centro_y, ancho, alto, elipse_dibujada, pixel_activado, movimiento_activado, dibujando_elipse, ultimo_clic
+    global area_libre_activa, puntos
+    global circulo_activado, centro_x, centro_y, radio, dibujando_circulo, ultimo_clic
+    global pixel_activado, movimiento_activado
 
-    if circulo_activado:
-        # MECANISMO PARA CÍRCULO
-        if (pixel_activado == False and movimiento_activado == False) and event.x and event.y:
-            # Verificar que no sea un doble clic
-            if ultimo_clic == (event.x, event.y):
-                return
+    if datos_cubo is not None and hasattr(event, 'xdata') and hasattr(event, 'ydata') and event.xdata is not None and event.ydata is not None:
+        x, y = int(event.xdata), int(event.ydata)
 
-            # Habilitar/deshabilitar el dibujo de círculos
-            dibujando_circulo = not dibujando_circulo
-            if not dibujando_circulo:
-                # Restablecer variables si se cancela el dibujo del círculo
-                centro_x, centro_y, radio = None, None, None
-            # Actualizar el estado del último clic
-            ultimo_clic = (event.x, event.y)
+        # Modo "Área Libre"
+        if area_libre_activa and not circulo_activado:
+            puntos.append((x, y))
+            punto = ax.plot(x, y, 'ro', markersize=5)  # 'ro' representa un punto rojo
+            puntos_dibujados.append(punto[0])  # Agrega el punto a la lista de puntos dibujados
+            canvas.draw()
 
-            if dibujando_circulo:
-                if centro_x is None and centro_y is None:
-                    # Primer clic: establece el centro del círculo
-                    centro_x, centro_y = event.x, event.y
-                else:
-                    # Segundo clic: calcula el radio y dibuja el círculo
-                    radio = ((event.x - centro_x) ** 2 + (event.y - centro_y) ** 2) ** 0.5
-                    dibujar_circulo(event)
-                    # Restablece las variables del círculo después de dibujarlo
+
+        if circulo_activado:
+            # MECANISMO PARA CÍRCULO
+            if (pixel_activado == False and movimiento_activado == False) and event.x and event.y:
+                # Verificar que no sea un doble clic
+                if ultimo_clic == (event.x, event.y):
+                    return
+
+                # Habilitar/deshabilitar el dibujo de círculos
+                dibujando_circulo = not dibujando_circulo
+                if not dibujando_circulo:
+                    # Restablecer variables si se cancela el dibujo del círculo
                     centro_x, centro_y, radio = None, None, None
+                # Actualizar el estado del último clic
+                ultimo_clic = (event.x, event.y)
+
+                if dibujando_circulo:
+                    if centro_x is None and centro_y is None:
+                        # Primer clic: establece el centro del círculo
+                        centro_x, centro_y = event.x, event.y
+                    else:
+                        # Segundo clic: calcula el radio y dibuja el círculo
+                        radio = ((event.x - centro_x) ** 2 + (event.y - centro_y) ** 2) ** 0.5
+                        dibujar_circulo(event)
+                        # Restablece las variables del círculo después de dibujarlo
+                        centro_x, centro_y, radio = None, None, None
 
 
-        elif pixel_activado and datos_cubo is not None:
-            # Obtén las coordenadas de datos a partir de las coordenadas del evento
-            coords_data = ax.transData.inverted().transform((event.x, event.y))
-            x, y = int(coords_data[0]), int(coords_data[1])
-            # Actualizar las entradas de las coordenadas
-            entrada_coord_x.delete(0, tk.END)
-            entrada_coord_x.insert(0, str(x))
-            entrada_coord_y.delete(0, tk.END)
-            entrada_coord_y.insert(0, str(y))
-            # Llamar a la función para graficar el espectro
-            graficar()
-            actualizar_etiqueta_coordenadas()
+            elif pixel_activado and datos_cubo is not None:
+                # Obtén las coordenadas de datos a partir de las coordenadas del evento
+                coords_data = ax.transData.inverted().transform((event.x, event.y))
+                x, y = int(coords_data[0]), int(coords_data[1])
+                # Actualizar las entradas de las coordenadas
+                entrada_coord_x.delete(0, tk.END)
+                entrada_coord_x.insert(0, str(x))
+                entrada_coord_y.delete(0, tk.END)
+                entrada_coord_y.insert(0, str(y))
+                # Llamar a la función para graficar el espectro
+                graficar()
+                actualizar_etiqueta_coordenadas()
 
-    # Verificar si está activada la creación de elipses
-    elif eclipse_activado:
-        # MECANISMO PARA ELIPSE
-        if (pixel_activado == False and movimiento_activado == False) and event.x and event.y:
-            # Verificar que no sea un doble clic
-            if ultimo_clic == (event.x, event.y):
-                return
+        # Verificar si está activada la creación de elipses
+        elif eclipse_activado:
+            # MECANISMO PARA ELIPSE
+            if (pixel_activado == False and movimiento_activado == False) and event.x and event.y:
+                # Verificar que no sea un doble clic
+                if ultimo_clic == (event.x, event.y):
+                    return
 
-            # Habilitar/deshabilitar el dibujo de elipses
-            dibujando_elipse = not dibujando_elipse
-            if not dibujando_elipse:
-                # Restablecer variables si se cancela el dibujo de la elipse
-                centro_x, centro_y, ancho, alto = None, None, None, None
-            # Actualizar el estado del último clic
-            ultimo_clic = (event.x, event.y)
-
-            if dibujando_elipse:
-                if centro_x is None and centro_y is None:
-                    # Primer clic: establece el centro de la elipse
-                    centro_x, centro_y = event.x, event.y
-                else:
-                    # Segundo clic: calcula el ancho, alto y dibuja la elipse
-                    ancho = abs(event.x - centro_x) * 2
-                    alto = abs(event.y - centro_y) * 2
-                    dibujar_elipse(event)
-                    # Restablece las variables de la elipse después de dibujarla
+                # Habilitar/deshabilitar el dibujo de elipses
+                dibujando_elipse = not dibujando_elipse
+                if not dibujando_elipse:
+                    # Restablecer variables si se cancela el dibujo de la elipse
                     centro_x, centro_y, ancho, alto = None, None, None, None
+                # Actualizar el estado del último clic
+                ultimo_clic = (event.x, event.y)
+
+                if dibujando_elipse:
+                    if centro_x is None and centro_y is None:
+                        # Primer clic: establece el centro de la elipse
+                        centro_x, centro_y = event.x, event.y
+                    else:
+                        # Segundo clic: calcula el ancho, alto y dibuja la elipse
+                        ancho = abs(event.x - centro_x) * 2
+                        alto = abs(event.y - centro_y) * 2
+                        dibujar_elipse(event)
+                        # Restablece las variables de la elipse después de dibujarla
+                        centro_x, centro_y, ancho, alto = None, None, None, None
 
 # Funcion para dibujar una elipse
 def dibujar_elipse(event):
@@ -605,6 +651,38 @@ def dibujar_pixel(event):
         graficar(x,y)
 
     canvas.draw()
+
+def conectar_puntos():
+    global puntos, lineas_figura  # Asegúrate de usar la variable global lineas_figura
+    if len(puntos) >= 2:
+        # Conectar los puntos en orden
+        for i in range(len(puntos) - 1):
+            x1, y1 = puntos[i]
+            x2, y2 = puntos[i + 1]
+            linea = ax.plot([x1, x2], [y1, y2], 'ro-')  # Conecta los puntos con una línea roja
+            lineas_figura.append(linea[0])  # Agrega la línea a la lista
+
+        # Conectar el último punto con el primer punto para cerrar el área
+        x1, y1 = puntos[-1]
+        x2, y2 = puntos[0]
+        linea = ax.plot([x1, x2], [y1, y2], 'ro-')  # Conecta el último punto con el primer punto
+        lineas_figura.append(linea[0])  # Agrega la línea a la lista
+
+        canvas.draw()
+
+# Función para activar/desactivar el modo de área libre
+def alternar_area_libre():
+    global area_libre_activa, puntos
+    if area_libre_activa:
+        area_libre_activa = False
+        # Aquí puedes conectar los puntos para formar la figura
+        conectar_puntos()
+        puntos = []  # Restablecer la lista de puntos
+        boton_area_libre.config(text="Activar Área Libre")
+    else:
+        area_libre_activa = True
+        boton_area_libre.config(text="Desactivar Área Libre")
+
 def on_canvas_click(event):
     if event.button == 3:  # Verificar si es un clic derecho
         abrir_menu_desplegable(event)
@@ -778,6 +856,18 @@ def borrar_figuras():
             cuadrado.remove()
         cuadrados_dibujados.clear()  # Limpia la lista de cuadrados dibujados
     canvas.draw()
+    # Limpia las líneas de la figura creada mediante la unión de puntos
+    for linea in lineas_figura:
+        linea.remove()
+    lineas_figura.clear()  # Limpia la lista de líneas de la figura
+
+    # Limpia los puntos que se agregaron durante el dibujo del área libre
+    for punto in puntos_dibujados:
+        punto.remove()
+    puntos_dibujados.clear()  # Limpia la lista de puntos dibujados
+    puntos.clear()
+
+    canvas.draw()
 
 
 
@@ -927,6 +1017,9 @@ boton_borrar_figuras.grid(row=3, column=6, padx=5, pady=10)
 # Crear un botón para borrar la última figura dibujada (círculo o elipse)
 boton_borrar_ultima_figura = tk.Button(ventana, text="Borrar Última Figura", command=borrar_ultima_figura)
 boton_borrar_ultima_figura.grid(row=3, column=7, padx=5, pady=10)
+
+boton_area_libre = tk.Button(ventana, text="Activar Área Libre", command=alternar_area_libre)
+boton_area_libre.grid(row=2, column=8, padx=5, pady=10, sticky="e")
 
 # Crear una figura de Matplotlib y canvas
 fig = Figure(figsize=(6, 6))
