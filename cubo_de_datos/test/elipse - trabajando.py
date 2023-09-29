@@ -12,7 +12,9 @@ import uuid
 from matplotlib.patches import Circle, Ellipse, Rectangle
 from matplotlib.figure import Figure
 from tkinter import Scale
-
+import matplotlib.pyplot as plt
+import matplotlib.path as mpath
+import numpy as np
 
 data_id = str(uuid.uuid4())
 graphic_id = str(uuid.uuid4())
@@ -47,6 +49,7 @@ area_libre_activa = False
 puntos = []
 lineas_figura = []
 puntos_dibujados = []
+# Variable para rastrear si el área libre está activa
 
 # Variables relacionadas con Matplotlib
 fig = None
@@ -307,6 +310,7 @@ def abrir_archivo():
 def graficar(x=None,y=None, ancho=None, alto= None, angulo = None):
     global circulos_dibujados, datos_cubo, figura_grafico, axes_grafico, ventana_grafico_abierta, linea_grafico
     global linea_grafico, figura_grafico, axes_grafico, ventana_grafico, ventana_grafico_abierta
+    global area_libre_activa, puntos
     if datos_cubo is not None:
         try:
             if pixel_activado:
@@ -455,41 +459,6 @@ def graficar(x=None,y=None, ancho=None, alto= None, angulo = None):
                 else:
                     messagebox.showerror("Error",
                                          "Selecciona exactamente una elipse para graficar el promedio del espectro por píxel.")
-
-            elif area_libre_activa:
-                if len(puntos) >= 3:  # Necesitamos al menos 3 puntos para formar un polígono
-                    # Crea un objeto Path a partir de los puntos
-                    path = matplotlib.path.Path(puntos)
-
-                    # Crea una grilla de coordenadas
-                    y_grid, x_grid = np.mgrid[0:datos_cubo.shape[1], 0:datos_cubo.shape[2]]
-                    coords = np.column_stack((x_grid.ravel(), y_grid.ravel()))
-
-                    # Usa el objeto Path para determinar qué píxeles están dentro del polígono
-                    mascara = path.contains_points(coords).reshape(datos_cubo.shape[1], datos_cubo.shape[2])
-
-                    # Calcula el espectro de los píxeles dentro del polígono
-                    espectro = datos_cubo[:, mascara]
-
-                    # Calcula el promedio del espectro por píxel dentro del área del polígono
-                    espectro_promedio = np.mean(espectro, axis=1)
-
-                    if not ventana_grafico_abierta:
-                        crear_ventana_grafico()
-                        linea_grafico, = axes_grafico.plot(espectro_promedio, lw=2)
-                        axes_grafico.set_xlabel('Frame')
-                        axes_grafico.set_ylabel('Intensidad')
-                        ventana_grafico_abierta = True
-                    else:
-                        linea_grafico.set_ydata(espectro_promedio)
-
-                    axes_grafico.set_xlim(0, len(espectro_promedio) - 1)
-                    axes_grafico.set_ylim(np.min(espectro_promedio) - 0.0002, np.max(espectro_promedio))
-
-                    # Actualiza el título del gráfico con la información del polígono y el promedio
-                    axes_grafico.set_title(
-                        f'Promedio del Espectro por píxel en el área del polígono (Puntos: {len(puntos)})')
-                    figura_grafico.canvas.draw()
 
         except ValueError:
             messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
@@ -651,9 +620,45 @@ def dibujar_pixel(event):
         graficar(x,y)
 
     canvas.draw()
+def graficar_area_libre():
+    global puntos, ventana_grafico_abierta, linea_grafico
+    if len(puntos) >= 3:  # Necesitamos al menos 3 puntos para formar un polígono
+        # Convierte los puntos (x, y) en una ruta (path) para el polígono
+        ruta_polígono = mpath.Path(puntos)
 
+        # Crea una grilla de coordenadas
+        y_grid, x_grid = np.mgrid[0:datos_cubo.shape[1], 0:datos_cubo.shape[2]]
+        coords = np.column_stack((x_grid.ravel(), y_grid.ravel()))
+
+        # Usa la ruta del polígono para determinar qué píxeles están dentro del polígono
+        mascara = ruta_polígono.contains_points(coords).reshape(datos_cubo.shape[1], datos_cubo.shape[2])
+
+        # Calcula el espectro de los píxeles dentro del polígono
+        espectro = datos_cubo[:, mascara]
+
+        # Calcula el promedio del espectro por píxel dentro del área del polígono
+        espectro_promedio = np.mean(espectro, axis=1)
+
+        if not ventana_grafico_abierta:
+            crear_ventana_grafico()
+            linea_grafico, = axes_grafico.plot(espectro_promedio, lw=2)
+            axes_grafico.set_xlabel('Frame')
+            axes_grafico.set_ylabel('Intensidad')
+            ventana_grafico_abierta = True
+        else:
+            linea_grafico.set_ydata(espectro_promedio)
+
+        axes_grafico.set_xlim(0, len(espectro_promedio) - 1)
+        axes_grafico.set_ylim(np.min(espectro_promedio) - 0.0002, np.max(espectro_promedio))
+
+        axes_grafico.set_title(
+            f'Promedio del Espectro por píxel en el área del polígono (Puntos: {len(puntos)})')
+        figura_grafico.canvas.draw()
+    else:
+        messagebox.showerror("Error", "Dibuja al menos 3 puntos para formar un polígono.")
 def conectar_puntos():
-    global puntos, lineas_figura  # Asegúrate de usar la variable global lineas_figura
+    global puntos, lineas_figura, area_libre_activa
+  # Asegúrate de usar la variable global lineas_figura
     if len(puntos) >= 2:
         # Conectar los puntos en orden
         for i in range(len(puntos) - 1):
@@ -667,6 +672,8 @@ def conectar_puntos():
         x2, y2 = puntos[0]
         linea = ax.plot([x1, x2], [y1, y2], 'ro-')  # Conecta el último punto con el primer punto
         lineas_figura.append(linea[0])  # Agrega la línea a la lista
+        area_libre_activa = False  # Desactivar el área libre cuando los puntos se conecten
+        graficar_area_libre()
 
         canvas.draw()
 
@@ -675,7 +682,6 @@ def alternar_area_libre():
     global area_libre_activa, puntos
     if area_libre_activa:
         area_libre_activa = False
-        # Aquí puedes conectar los puntos para formar la figura
         conectar_puntos()
         puntos = []  # Restablecer la lista de puntos
         boton_area_libre.config(text="Activar Área Libre")
