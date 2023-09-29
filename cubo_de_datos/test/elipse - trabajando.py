@@ -91,7 +91,7 @@ graphics_collection = base_datos["Graphics"]
 # Comments
 comments_collection = base_datos["Comments"]
 
-
+ventanas_grafico = []
 # Función para cargar la imagen FITS actual
 def cargar_imagen_actual():
     global imagen_actual
@@ -156,26 +156,22 @@ def cargar_imagen_desde_barra(event):
 # Función para crear una ventana emergente para el gráfico
 def crear_ventana_grafico():
     global ventana_grafico, figura_grafico, axes_grafico, canvas_grafico, ventana_grafico_abierta
-    if not ventana_grafico_abierta:
-        ventana_grafico = Toplevel()
-        ventana_grafico.title("Gráfico del Espectro")
-        figura_grafico, axes_grafico = plt.subplots(figsize=(8, 5))
-        canvas_grafico = FigureCanvasTkAgg(figura_grafico, master=ventana_grafico)
-        canvas_grafico.get_tk_widget().pack()
-        ventana_grafico.protocol("WM_DELETE_WINDOW", cerrar_ventana_grafico)
-        ventana_grafico_abierta = True
+    ventana_grafico = Toplevel()
+    ventana_grafico.title("Gráfico del Espectro")
+    figura_grafico, axes_grafico = plt.subplots(figsize=(8, 5))
+    canvas_grafico = FigureCanvasTkAgg(figura_grafico, master=ventana_grafico)
+    canvas_grafico.get_tk_widget().pack()
+    ventana_grafico.protocol("WM_DELETE_WINDOW", cerrar_ventana_grafico)
+    ventana_grafico.button_salir = tk.Button(ventana_grafico, text="Salir", command=ventana_grafico.destroy)
+    ventana_grafico.button_salir.pack()
+    ventanas_grafico.append(ventana_grafico)
 
 
 # Función para cerrar la ventana emergente del gráfico
 def cerrar_ventana_grafico():
-    global ventana_grafico, ventana_grafico_abierta
-    if ventana_grafico:
-        ventana_grafico.destroy()
-        # Restablecer las variables de la figura y los ejes
-        figura_grafico.clf()
-        axes_grafico = figura_grafico.add_subplot(111)
-        figura_grafico.canvas.draw()
-        ventana_grafico_abierta = False
+    global ventana_grafico
+    ventana_grafico = ventanas_grafico.pop()
+    ventana_grafico.destroy()
 
 def iniciar_arrastre(event):
     global dragging
@@ -424,42 +420,50 @@ def graficar(x=None,y=None, ancho=None, alto= None, angulo = None):
                     messagebox.showerror("Error",
                                          "Selecciona exactamente un cuadrado para graficar el promedio del espectro por píxel.")
 
+
             elif eclipse_activado:
+
                 print("grafico")
-                if len(elipses_dibujadas) == 1:
-                    elipse = elipses_dibujadas[0]
+
+                for i, elipse in enumerate(elipses_dibujadas):
                     centro_x, centro_y = elipse.center
+
                     ancho = elipse.width
+
                     alto = elipse.height
 
                     # Calcula la máscara para el área dentro de la elipse
+
                     y, x = np.ogrid[-centro_y:datos_cubo.shape[1] - centro_y, -centro_x:datos_cubo.shape[2] - centro_x]
+
                     mascara = ((x / (ancho / 2)) ** 2 + (y / (alto / 2)) ** 2) <= 1
+
                     espectro = datos_cubo[:, mascara]
 
                     # Calcula el promedio del espectro por píxel dentro del área de la elipse
+
                     espectro_promedio = np.mean(espectro, axis=1)
 
-                    if not ventana_grafico_abierta:
-                        crear_ventana_grafico()
-                        linea_grafico, = axes_grafico.plot(espectro_promedio, lw=2)
-                        axes_grafico.set_xlabel('Frame')
-                        axes_grafico.set_ylabel('Intensidad')
-                        ventana_grafico_abierta = True
-                    else:
-                        linea_grafico.set_ydata(espectro_promedio)
+                    # Crea una nueva ventana para el gráfico
 
-                    axes_grafico.set_xlim(0, len(espectro_promedio) - 1)
-                    axes_grafico.set_ylim(np.min(espectro_promedio) - 0.0002, np.max(espectro_promedio))
+                    crear_ventana_grafico()
+
+                    # Agrega la línea del gráfico a la ventana
+
+                    linea_grafico, = axes_grafico.plot(espectro_promedio, lw=2)
+
+                    axes_grafico.set_xlabel('Frame')
+
+                    axes_grafico.set_ylabel('Intensidad')
 
                     # Actualiza el título del gráfico con la información de la elipse y el promedio
-                    axes_grafico.set_title(
-                        f'Promedio del Espectro por píxel en el área de la elipse (Centro: ({centro_x}, {centro_y}), Ancho: {ancho}, Alto: {alto})')
-                    figura_grafico.canvas.draw()
-                else:
-                    messagebox.showerror("Error",
-                                         "Selecciona exactamente una elipse para graficar el promedio del espectro por píxel.")
 
+                    axes_grafico.set_title(
+
+                        f'Promedio del Espectro por píxel en el área de la elipse (Centro: ({centro_x}, {centro_y}), Ancho: {ancho}, Alto: {alto})')
+
+                    figura_grafico.canvas.draw()
+                    ventanas_grafico.append(ventana_grafico)
         except ValueError:
             messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
 
@@ -529,8 +533,7 @@ def on_image_click(event):
                 if ultimo_clic == (event.x, event.y):
                     return
 
-                # Habilitar/deshabilitar el dibujo de elipses
-                dibujando_elipse = not dibujando_elipse
+
                 if not dibujando_elipse:
                     # Restablecer variables si se cancela el dibujo de la elipse
                     centro_x, centro_y, ancho, alto = None, None, None, None
@@ -1026,6 +1029,9 @@ boton_borrar_ultima_figura.grid(row=3, column=7, padx=5, pady=10)
 
 boton_area_libre = tk.Button(ventana, text="Activar Área Libre", command=alternar_area_libre)
 boton_area_libre.grid(row=2, column=8, padx=5, pady=10, sticky="e")
+
+boton_salir = tk.Button(ventana, text="Salir", command=ventana.destroy)
+boton_salir.grid(row=3, column=5, padx=5, pady=10)
 
 # Crear una figura de Matplotlib y canvas
 fig = Figure(figsize=(6, 6))
