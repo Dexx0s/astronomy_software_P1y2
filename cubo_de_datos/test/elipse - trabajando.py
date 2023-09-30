@@ -274,9 +274,11 @@ def abrir_archivo():
             }
             data_collection.insert_one(data_info)
 
+            actualizar_estado_menu()
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo abrir el archivo FITS: {str(e)}")
             boton_graficar.config(state=tk.DISABLED)
+            actualizar_estado_menu()
     else:
         # Si no se selecciona un archivo FITS válido, deshabilita el botón "Graficar"
         boton_graficar.config(state=tk.DISABLED)
@@ -873,6 +875,56 @@ def tamano_eclipse(val):
             ultima_elipse.angle = rotacion
         canvas.draw()
 
+def mostrar_encabezado():
+    global hdul
+    if hdul is None:
+        tk.messagebox.showerror("Error", "No hay archivo FITS abierto.")
+    else:
+        # Muestra el encabezado en una ventana emergente con un widget Text
+        header = hdul[0].header
+        ventana_encabezado = tk.Toplevel(ventana)
+        ventana_encabezado.title("Header del Archivo FITS")
+
+        # Crea un widget Text para mostrar el encabezado
+        texto_encabezado = tk.Text(ventana_encabezado, wrap=tk.NONE)
+        texto_encabezado.insert(tk.END, repr(header))
+        texto_encabezado.pack(side=tk.LEFT, padx=15, pady=15, fill=tk.BOTH, expand=True)
+
+        # Agrega una barra de desplazamiento vertical para el widget Text
+        scrollbar = tk.Scrollbar(ventana_encabezado, command=texto_encabezado.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        texto_encabezado.config(yscrollcommand=scrollbar.set)
+
+def actualizar_estado_menu():
+    global hdul, ver_menu
+    if hdul is None:
+        ver_menu.entryconfig("Ver Encabezado", state=tk.DISABLED)
+    else:
+        ver_menu.entryconfig("Ver Encabezado", state=tk.NORMAL)
+
+def ver_graficos():
+    # Aquí implementa la lógica para ver gráficos desde MongoDB
+    pass
+
+# Crear una función para configurar el menú
+def configurar_menu():
+    global ver_menu
+    menu = tk.Menu(ventana)
+    ventana.config(menu=menu)
+
+    # Crear un menú "Archivo" con opciones
+    archivo_menu = tk.Menu(menu, tearoff=0)  # Agregar tearoff=0 para eliminar la mini ventana
+    menu.add_cascade(label="Archivo", menu=archivo_menu)
+    archivo_menu.add_command(label="Abrir archivo", command=lambda: abrir_archivo())
+    archivo_menu.add_command(label="Salir", command=ventana.destroy)
+
+    # Crear un menú "Ver" con opciones
+    ver_menu = tk.Menu(menu, tearoff=0)  # Agregar tearoff=0 para eliminar la mini ventana
+    menu.add_cascade(label="Ver", menu=ver_menu)
+    ver_menu.add_command(label="Ver Gráficos", command=lambda: ver_graficos())
+    ver_menu.add_command(label="Ver Encabezado", command=lambda: mostrar_encabezado(), state=tk.DISABLED)  # Agrega la opción de menú para ver el encabezado
+
+
 ventana = tk.Tk()
 ventana.title("Cargar Archivos Fits")
 ventana.geometry("1050x900")
@@ -991,4 +1043,6 @@ elipse_ancho.config(command=tamano_eclipse)
 elipse_alto.config(command=tamano_eclipse)
 rotacion_elipse.config(command=tamano_eclipse)
 
+
+configurar_menu()
 ventana.mainloop()
