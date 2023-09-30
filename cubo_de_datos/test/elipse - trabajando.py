@@ -50,7 +50,7 @@ puntos = []
 lineas_figura = []
 puntos_dibujados = []
 # Variable para rastrear si el área libre está activa
-
+lineas_grafico = []
 # Variables relacionadas con Matplotlib
 fig = None
 ax = None
@@ -72,12 +72,10 @@ dibujando_circulo = False
 circulo_dibujado = None
 
 #variables para cuadrado
-cuadrado_activado = False
 cuadrados_dibujados = []  # Lista para almacenar los cuadrados dibujados
 ultimo_cuadrado = None  # Variable para mantener un seguimiento del último cuadrado dibujado
 
 #Variables para el pixel
-puntos_dibujados = []
 ultimo_punto = None
 
 cliente = pymongo.MongoClient("mongodb://localhost:27017/")
@@ -100,8 +98,6 @@ def cargar_imagen_actual():
     ax.set_title(f"Imagen {imagen_actual + 1}/{num_frames}")
     canvas.draw()
     actualizar_etiqueta_coordenadas()
-
-
 #funcion para cargar imagen desde entrada de texto
 def cargar_imagen():
     global imagen_actual
@@ -110,7 +106,6 @@ def cargar_imagen():
         imagen_actual = entry - 1
         cargar_imagen_actual()
         actualizar_barra_desplazamiento()
-
 # Función para actualizar la etiqueta de coordenadas
 def actualizar_etiqueta_coordenadas():
     global coordenadas_label
@@ -126,8 +121,6 @@ def actualizar_etiqueta_coordenadas():
     entrada_coord_z.insert(1, imagen_actual+1)
     if coordenadas_label is not None:
         coordenadas_label.config(text=f"Píxel Seleccionado: ({entrada_coord_x.get()}, {entrada_coord_y.get()})")
-
-
 # Función para cargar la imagen anterior
 def cargar_imagen_anterior():
     global imagen_actual
@@ -135,8 +128,6 @@ def cargar_imagen_anterior():
         imagen_actual -= 1
         cargar_imagen_actual()
         actualizar_barra_desplazamiento()
-
-
 # Función para cargar la siguiente imagen
 def cargar_siguiente_imagen():
     global imagen_actual
@@ -144,7 +135,6 @@ def cargar_siguiente_imagen():
         imagen_actual += 1
         cargar_imagen_actual()
         actualizar_barra_desplazamiento()
-
 # Función para cargar la imagen actual en función del valor de la barra de desplazamiento
 def cargar_imagen_desde_barra(event):
     global imagen_actual
@@ -152,7 +142,6 @@ def cargar_imagen_desde_barra(event):
     if nueva_posicion >= 1 and nueva_posicion <= num_frames:
         imagen_actual = nueva_posicion - 1
         cargar_imagen_actual()
-
 # Función para crear una ventana emergente para el gráfico
 def crear_ventana_grafico():
     global ventana_grafico, figura_grafico, axes_grafico, canvas_grafico, ventana_grafico_abierta
@@ -165,14 +154,11 @@ def crear_ventana_grafico():
     ventana_grafico.button_salir = tk.Button(ventana_grafico, text="Salir", command=ventana_grafico.destroy)
     ventana_grafico.button_salir.pack()
     ventanas_grafico.append(ventana_grafico)
-
-
 # Función para cerrar la ventana emergente del gráfico
 def cerrar_ventana_grafico():
     global ventana_grafico
     ventana_grafico = ventanas_grafico.pop()
     ventana_grafico.destroy()
-
 def iniciar_arrastre(event):
     global dragging
     dragging = True
@@ -180,11 +166,9 @@ def iniciar_arrastre(event):
     global last_mouse_x, last_mouse_y
     last_mouse_x = event.x
     last_mouse_y = event.y
-
 def detener_arrastre(event):
     global dragging
     dragging = False
-
 # Función para manejar el arrastre de la imagen
 def mover_imagen(event):
     global dragging, last_mouse_x, last_mouse_y
@@ -212,14 +196,10 @@ def mover_imagen(event):
         # Actualizar las coordenadas del ratón
         last_mouse_x = event.x
         last_mouse_y = event.y
-
 def remove_nans(extension_valida):
     hdul = fits.open(archivo_fits, ext=2)
     extension_valida.data[np.isnan(extension_valida.data)] = 0
     extension_valida.data[np.isinf(extension_valida.data)] = 0
-
-
-
 # Función para cargar un archivo FITS
 def abrir_archivo():
     global archivo_fits, hdul, datos_cubo, num_frames, boton_anterior, boton_siguiente, boton_graficar
@@ -300,32 +280,29 @@ def abrir_archivo():
     else:
         # Si no se selecciona un archivo FITS válido, deshabilita el botón "Graficar"
         boton_graficar.config(state=tk.DISABLED)
-
-
 # Función para graficar el espectro del píxel seleccionado
 def graficar(x=None,y=None, ancho=None, alto= None, angulo = None):
     global circulos_dibujados, datos_cubo, figura_grafico, axes_grafico, ventana_grafico_abierta, linea_grafico
     global linea_grafico, figura_grafico, axes_grafico, ventana_grafico, ventana_grafico_abierta
     global area_libre_activa, puntos
+    ventana_grafico_abierta = False
     if datos_cubo is not None:
         try:
             if pixel_activado:
-                print("iff")
+                x, y = x_pixel, y_pixel
                 if x and y:
-                    print("iff")
                     x = int(x)
                     y = int(y)
                     if 0 <= x < datos_cubo.shape[2] and 0 <= y < datos_cubo.shape[1]:
                         espectro = datos_cubo[:, y, x]
+
+                        # Crea una nueva ventana solo una vez
                         if not ventana_grafico_abierta:
                             crear_ventana_grafico()
-                            linea_grafico, = axes_grafico.plot(espectro, lw=2)
-                            axes_grafico.set_xlabel('Frame')
-                            axes_grafico.set_ylabel('Intensidad')
                             ventana_grafico_abierta = True
-                        else:
-                            # Si ya existe la línea, actualiza sus datos
-                            linea_grafico.set_ydata(espectro)
+
+                        # Crea una nueva línea para el gráfico
+                        linea_grafico, = axes_grafico.plot(espectro, lw=2)
 
                         # Establecer los límites de los ejes x e y
                         axes_grafico.set_xlim(0, len(espectro) - 1)
@@ -334,22 +311,8 @@ def graficar(x=None,y=None, ancho=None, alto= None, angulo = None):
                         # Actualiza el título del gráfico con las coordenadas
                         axes_grafico.set_title(f'Espectro del píxel ({x}, {y})')
                         figura_grafico.canvas.draw()
-                        fecha_actual = datetime.now()
                     else:
                         messagebox.showerror("Error", "Coordenadas fuera de los límites de la imagen.")
-
-                    # Base de datos = Graphics_Colletion
-                    selected_pixel = f"({x}, {y})"
-                    graphics_info = {
-                        "Graphic_id": graphic_id,                     # Identificador unico
-                        "Imagen": imagen_actual + 1,
-                        "Pixeles": selected_pixel,                    # Pixeles segun x e y
-                        "Fecha": fecha_actual.strftime("%d/%m/%Y"),   # Fecha segun día/mes/año
-                        "Hora": fecha_actual.strftime("%H:%M:%S"),    # Fecha segun Hora
-                        "Data": str(espectro)                         # Representacion de los datos
-                    }
-                    graphics_collection.insert_one(graphics_info)
-
                 else:
                     messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
             elif circulo_activado:
@@ -419,55 +382,31 @@ def graficar(x=None,y=None, ancho=None, alto= None, angulo = None):
                 else:
                     messagebox.showerror("Error",
                                          "Selecciona exactamente un cuadrado para graficar el promedio del espectro por píxel.")
-
-
             elif eclipse_activado:
-
                 print("grafico")
-
                 for i, elipse in enumerate(elipses_dibujadas):
                     centro_x, centro_y = elipse.center
-
                     ancho = elipse.width
-
                     alto = elipse.height
-
                     # Calcula la máscara para el área dentro de la elipse
-
                     y, x = np.ogrid[-centro_y:datos_cubo.shape[1] - centro_y, -centro_x:datos_cubo.shape[2] - centro_x]
-
                     mascara = ((x / (ancho / 2)) ** 2 + (y / (alto / 2)) ** 2) <= 1
-
                     espectro = datos_cubo[:, mascara]
-
                     # Calcula el promedio del espectro por píxel dentro del área de la elipse
-
                     espectro_promedio = np.mean(espectro, axis=1)
-
                     # Crea una nueva ventana para el gráfico
-
                     crear_ventana_grafico()
-
                     # Agrega la línea del gráfico a la ventana
-
                     linea_grafico, = axes_grafico.plot(espectro_promedio, lw=2)
-
                     axes_grafico.set_xlabel('Frame')
-
                     axes_grafico.set_ylabel('Intensidad')
-
                     # Actualiza el título del gráfico con la información de la elipse y el promedio
-
                     axes_grafico.set_title(
-
                         f'Promedio del Espectro por píxel en el área de la elipse (Centro: ({centro_x}, {centro_y}), Ancho: {ancho}, Alto: {alto})')
-
                     figura_grafico.canvas.draw()
                     ventanas_grafico.append(ventana_grafico)
         except ValueError:
             messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
-
-
 # Cambia esta parte en la función on_image_click
 def on_image_click(event):
     global area_libre_activa, puntos
@@ -551,7 +490,6 @@ def on_image_click(event):
                         dibujar_elipse(event)
                         # Restablece las variables de la elipse después de dibujarla
                         centro_x, centro_y, ancho, alto = None, None, None, None
-
 # Funcion para dibujar una elipse
 def dibujar_elipse(event):
     global eclipse_activado, ultima_elipse
@@ -572,8 +510,6 @@ def dibujar_elipse(event):
         alto_elipse = elipse.height
         angulo_elipse = elipse.angle
     canvas.draw()
-
-
 def dibujar_cuadrado(event):
     global cuadrado_activado, ultimo_cuadrado
 
@@ -586,9 +522,6 @@ def dibujar_cuadrado(event):
         ultimo_cuadrado = cuadrado  # Actualiza el último cuadrado dibujado
 
     canvas.draw()
-
-
-
 # Función para dibujar un círculo en el subplot de Matplotlib
 def dibujar_circulo(event):
     global radio, ultimo_circulo
@@ -604,23 +537,18 @@ def dibujar_circulo(event):
         centro_x, centro_y = circulo.center
         radio_circulo = circulo.radius
     canvas.draw()
-
 def dibujar_pixel(event):
-    global pixel_activado, ultimo_punto
-
+    global pixel_activado, ultimo_punto, x_pixel, y_pixel
     if pixel_activado and event.xdata is not None and event.ydata is not None:
         x, y = event.xdata, event.ydata
         print(f"x: {x}, y: {y}")  # Agrega esta línea para imprimir las coordenadas
         # Solo para que el punto sea visible segun el pixel seleccionado por el usuario
-        tamaño_punto = 1
-        punto = Rectangle((x - tamaño_punto / 2, y - tamaño_punto / 2), tamaño_punto, tamaño_punto, color='red', fill=True)
-        ax.add_patch(punto)
+        tamaño_punto = 4
+        punto = ax.scatter(x, y, color='red', s=tamaño_punto)
         puntos_dibujados.append(punto)
         ultimo_punto = punto
         # Actualiza las variables globales para su uso posterior al presionar el botón de graficar
         x_pixel, y_pixel = x, y
-        # Falta por implementar
-        graficar(x,y)
 
     canvas.draw()
 def graficar_area_libre():
@@ -679,7 +607,6 @@ def conectar_puntos():
         graficar_area_libre()
 
         canvas.draw()
-
 # Función para activar/desactivar el modo de área libre
 def alternar_area_libre():
     global area_libre_activa, puntos
@@ -691,11 +618,9 @@ def alternar_area_libre():
     else:
         area_libre_activa = True
         boton_area_libre.config(text="Desactivar Área Libre")
-
 def on_canvas_click(event):
     if event.button == 3:  # Verificar si es un clic derecho
         abrir_menu_desplegable(event)
-
 def abrir_menu_desplegable(event):
     # Crear el menú desplegable
     menu = Menu(ventana, tearoff=0)
@@ -732,8 +657,6 @@ def abrir_menu_desplegable(event):
 
     # Mostrar el menú en la posición del clic derecho
     menu.post(event.x_root, event.y_root)
-
-
 def toggle_movimiento():
     global movimiento_activado, pixel_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado
     movimiento_activado = not movimiento_activado
@@ -751,7 +674,6 @@ def toggle_movimiento():
         canvas.get_tk_widget().unbind("<ButtonPress-1>")
         canvas.get_tk_widget().unbind("<B1-Motion>")
         canvas.get_tk_widget().unbind("<ButtonRelease-1>")
-
 # Nueva función para cambiar el estado de la opción "Pixel"
 def toggle_pixel():
     global pixel_activado, movimiento_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado
@@ -761,7 +683,6 @@ def toggle_pixel():
     eclipse_activado = False
     cuadrado_activado = False
     area_activado = False
-
 # Nueva función para cambiar el estado de la opción "Círculo"
 def toggle_circulo():
     global pixel_activado, movimiento_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado
@@ -774,7 +695,6 @@ def toggle_circulo():
     # Si desactivas la opción "Círculo", borra todos los círculos dibujados
     if not circulo_activado:
         borrar_figuras()
-
 def toggle_eclipse():
     global pixel_activado, movimiento_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado
     eclipse_activado = not eclipse_activado
@@ -785,7 +705,6 @@ def toggle_eclipse():
     area_activado = False
     if not eclipse_activado:
         borrar_figuras()
-
 def toggle_cuadrado():
     global cuadrado_activado, pixel_activado, movimiento_activado, circulo_activado, eclipse_activado, area_activado
     cuadrado_activado = not cuadrado_activado
@@ -797,8 +716,6 @@ def toggle_cuadrado():
     # Si desactivas la opción "Cuadrado", borra todos los cuadrados dibujados
     if not cuadrado_activado:
         borrar_figuras()
-
-
 def toggle_area():
     global pixel_activado, movimiento_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado
     area_activado = not area_activado
@@ -807,7 +724,6 @@ def toggle_area():
     circulo_activado = False
     eclipse_activado = False
     cuadrado_activado = False
-
 # Función para manejar el evento de zoom con la rueda del ratón
 def on_scroll(event):
     global ax
@@ -841,11 +757,9 @@ def actualizar_barra_desplazamiento():
     if barra_desplazamiento is not None:
         barra_desplazamiento.config(from_=1, to=num_frames, command=cargar_imagen_desde_barra)
         barra_desplazamiento.set(imagen_actual + 1)
-
 def cerrar_ventana_principal():
     ventana.quit()  # Finalizar el bucle principal de Tkinter
     ventana.destroy()  # Destruir la ventana principal
-
 def borrar_figuras():
     global cuadrados_dibujados, ultima_elipse, ultimo_circulo, ultimo_punto
 
@@ -877,9 +791,6 @@ def borrar_figuras():
     puntos.clear()
 
     canvas.draw()
-
-
-
 def borrar_ultima_figura():
     global circulos_dibujados, elipses_dibujadas, cuadrados_dibujados, ultima_elipse, ultimo_circulo, ultimo_cuadrado
     global puntos_dibujados, ultimo_punto
@@ -920,7 +831,6 @@ def borrar_ultima_figura():
             else:
                 ultimo_cuadrado = None  # Si no hay más cuadrados, establece el último_cuadrado a None
             canvas.draw()
-
 def botones_actualizados():
     if circulo_activado:
         boton_borrar_figuras.config(state=tk.NORMAL)
@@ -934,7 +844,6 @@ def botones_actualizados():
     elif cuadrado_activado:  # Agregar lógica para cuadrados
         boton_borrar_figuras.config(state=tk.NORMAL)
         boton_borrar_ultima_figura.config(state=tk.NORMAL)
-
 def tamano_figura(val):
     global lado, s_x, s_y, ultima_elipse, ultimo_circulo, ultimo_cuadrado, relacion_aspecto_original
     tamano = float(val)
@@ -948,8 +857,6 @@ def tamano_figura(val):
             ultimo_cuadrado.set_width(lado)
             ultimo_cuadrado.set_height(lado)
     canvas.draw()
-
-
 def tamano_eclipse(val):
     global ultima_elipse
     # Obtiene los valores de las barras de desplazamiento de la elipse
@@ -965,7 +872,6 @@ def tamano_eclipse(val):
             # Ajusta la rotación de la elipse
             ultima_elipse.angle = rotacion
         canvas.draw()
-
 
 ventana = tk.Tk()
 ventana.title("Cargar Archivos Fits")
