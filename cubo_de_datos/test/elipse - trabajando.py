@@ -15,7 +15,7 @@ from tkinter import Scale
 import matplotlib.pyplot as plt
 import matplotlib.path as mpath
 import numpy as np
-
+from tkinter import ttk
 data_id = str(uuid.uuid4())
 graphic_id = str(uuid.uuid4())
 matplotlib.use("TkAgg")
@@ -621,9 +621,11 @@ def alternar_area_libre():
     else:
         area_libre_activa = True
         boton_area_libre.config(text="Desactivar Área Libre")
+"""        
 def on_canvas_click(event):
     if event.button == 3:  # Verificar si es un clic derecho
         abrir_menu_desplegable(event)
+
 def abrir_menu_desplegable(event):
     # Crear el menú desplegable
     menu = Menu(ventana, tearoff=0)
@@ -660,6 +662,8 @@ def abrir_menu_desplegable(event):
 
     # Mostrar el menú en la posición del clic derecho
     menu.post(event.x_root, event.y_root)
+
+"""
 def toggle_movimiento():
     global movimiento_activado, pixel_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado
     movimiento_activado = not movimiento_activado
@@ -928,7 +932,7 @@ def configurar_menu():
 
 ventana = tk.Tk()
 ventana.title("Cargar Archivos Fits")
-ventana.geometry("1050x900")
+ventana.geometry("1250x900")
 
 ventana.protocol("WM_DELETE_WINDOW", cerrar_ventana_principal)
 
@@ -960,10 +964,17 @@ etiqueta_coord_z.grid(row=2, column=3, padx=5, pady=5, sticky="e")
 entrada_coord_z = tk.Entry(ventana)
 entrada_coord_z.grid(row=2, column=4, padx=5, pady=5)
 
+#inicio en 0  para no tener errores
 entrada_coord_z.insert(0, "0")
 
 boton_frame = tk.Button(ventana, text="ir a imagen", command=cargar_imagen)
 boton_frame.grid(row=2, column=4, columnspan=5, padx=5, pady=10)
+
+##comobobox graficos
+combooptions_text = tk.Label(ventana, text="Acciones")
+combooptions_text.grid(row=2, column=0, padx=5, pady=10)
+combooptions = ttk.Combobox(ventana, values=["Movimiento", "Cuadrado", "Pixel", "Circulo", "elipse","Area Libre" ])
+combooptions.grid(row=2, column=1, padx=5, pady=10)
 
 boton_graficar = tk.Button(ventana, text="Graficar", command=graficar, bg="green", fg="white", state=tk.DISABLED)
 boton_graficar.grid(row=2, column=0, columnspan=5, padx=5, pady=10)
@@ -1003,7 +1014,7 @@ canvas.get_tk_widget().grid(row=4, column=0, columnspan=5, padx=5, pady=10)
 #canvas.get_tk_widget().bind("<ButtonPress-1>", iniciar_arrastre)
 #canvas.get_tk_widget().bind("<B1-Motion>", mover_imagen)
 #canvas.get_tk_widget().bind("<ButtonRelease-1>", detener_arrastre)
-canvas.get_tk_widget().bind("<Button-3>", abrir_menu_desplegable)
+"""canvas.get_tk_widget().bind("<Button-3>", abrir_menu_desplegable)"""
 canvas.get_tk_widget().bind("<Button-1>", on_image_click)
 
 
@@ -1044,6 +1055,49 @@ elipse_ancho.config(command=tamano_eclipse)
 elipse_alto.config(command=tamano_eclipse)
 rotacion_elipse.config(command=tamano_eclipse)
 
+
+###combobox selector
+def cambiar_tipo_figura(event):
+    global movimiento_activado, pixel_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado
+    seleccion = combooptions.get()
+
+    # Restablecer todas las opciones a False
+    movimiento_activado = False
+    pixel_activado = False
+    circulo_activado = False
+    eclipse_activado = False
+    cuadrado_activado = False
+    area_activado = False
+
+    if seleccion == "Movimiento":
+        movimiento_activado = True
+        # Habilitar eventos relacionados con el movimiento
+        canvas.get_tk_widget().bind("<ButtonPress-1>", iniciar_arrastre)
+        canvas.get_tk_widget().bind("<B1-Motion>", mover_imagen)
+        canvas.get_tk_widget().bind("<ButtonRelease-1>", detener_arrastre)
+    elif seleccion == "Pixel":
+        pixel_activado = True
+    elif seleccion == "Circulo":
+        circulo_activado = True
+    elif seleccion == "Elipse":
+        eclipse_activado = True
+    elif seleccion == "Cuadrado":
+        cuadrado_activado = True
+    elif seleccion == "Area Libre":
+        area_activado = True
+    
+    # Borrar figuras si se desactiva una opción de dibujo
+    if seleccion not in ["Circulo", "Elipse"]:
+        borrar_figuras()
+
+    # Deshabilitar eventos relacionados con el movimiento si no está seleccionado
+    if seleccion != "Movimiento":
+        canvas.get_tk_widget().unbind("<ButtonPress-1>")
+        canvas.get_tk_widget().unbind("<B1-Motion>")
+        canvas.get_tk_widget().unbind("<ButtonRelease-1>")
+
+# Enlazar la función cambiar_tipo_figura al ComboBox
+combooptions.bind("<<ComboboxSelected>>", cambiar_tipo_figura)
 
 configurar_menu()
 ventana.mainloop()
