@@ -572,15 +572,14 @@ def graficar_area_libre():
         # Calcula el promedio del espectro por píxel dentro del área del polígono
         espectro_promedio = np.mean(espectro, axis=1)
 
-        # Si la ventana del gráfico no está abierta, la abre y crea un nuevo gráfico
-        ventana_grafico_abierta = True
-        crear_ventana_grafico()
-        linea_grafico, = axes_grafico.plot(espectro_promedio, lw=2)
-        axes_grafico.set_xlabel('Frame')
-        axes_grafico.set_ylabel('Intensidad')
-
-        # Actualiza el gráfico existente
-        linea_grafico.set_ydata(espectro_promedio)
+        if not ventana_grafico_abierta:
+            crear_ventana_grafico()
+            linea_grafico, = axes_grafico.plot(espectro_promedio, lw=2)
+            axes_grafico.set_xlabel('Frame')
+            axes_grafico.set_ylabel('Intensidad')
+            ventana_grafico_abierta = True
+        else:
+            linea_grafico.set_ydata(espectro_promedio)
 
         axes_grafico.set_xlim(0, len(espectro_promedio) - 1)
         axes_grafico.set_ylim(np.min(espectro_promedio) - 0.0002, np.max(espectro_promedio))
@@ -592,9 +591,8 @@ def graficar_area_libre():
         messagebox.showerror("Error", "Dibuja al menos 3 puntos para formar un polígono.")
 def conectar_puntos():
     global puntos, lineas_figura, area_libre_activa
+  # Asegúrate de usar la variable global lineas_figura
     if len(puntos) >= 2:
-        graficar_area_libre()
-
         # Conectar los puntos en orden
         for i in range(len(puntos) - 1):
             x1, y1 = puntos[i]
@@ -608,6 +606,7 @@ def conectar_puntos():
         linea = ax.plot([x1, x2], [y1, y2], 'ro-')  # Conecta el último punto con el primer punto
         lineas_figura.append(linea[0])  # Agrega la línea a la lista
         area_libre_activa = False  # Desactivar el área libre cuando los puntos se conecten
+        graficar_area_libre()
 
         canvas.draw()
 # Función para activar/desactivar el modo de área libre
