@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import matplotlib.path as mpath
 import numpy as np
 from tkinter import ttk
+
 data_id = str(uuid.uuid4())
 graphic_id = str(uuid.uuid4())
 matplotlib.use("TkAgg")
@@ -972,8 +973,12 @@ boton_frame.grid(row=2, column=4, columnspan=5, padx=5, pady=10)
 ##comobobox graficos
 combooptions_text = tk.Label(ventana, text="Acciones")
 combooptions_text.grid(row=2, column=0, padx=5, pady=10)
-combooptions = ttk.Combobox(ventana, values=["Movimiento", "Cuadrado", "Pixel", "Circulo", "elipse","Area Libre" ])
+combooptions = ttk.Combobox(ventana, values=["--select items--","Movimiento", "Cuadrado", "Pixel", "Circulo", "Elipse","Area Libre" ])
 combooptions.grid(row=2, column=1, padx=5, pady=10)
+
+##configuracion combobox
+combooptions.configure(state="readonly")
+combooptions.current(0)
 
 boton_graficar = tk.Button(ventana, text="Graficar", command=graficar, bg="green", fg="white", state=tk.DISABLED)
 boton_graficar.grid(row=2, column=0, columnspan=5, padx=5, pady=10)
