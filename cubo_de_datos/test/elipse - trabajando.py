@@ -4,7 +4,7 @@ import numpy as np
 import tkinter as tk
 from tkinter import filedialog, messagebox, Toplevel, Menu, simpledialog
 
-from PIL import Image
+from PIL import Image, ImageTk
 from astropy.io import fits
 import pymongo
 from datetime import datetime
@@ -177,9 +177,13 @@ def crear_ventana_grafico():
 
     ventana_grafico.protocol("WM_DELETE_WINDOW", cerrar_ventana_grafico)
 
-    # Agregar un cuadro de texto para ingresar comentarios (más ancho)
-    cuadro_comentarios = tk.Text(ventana_grafico, height=5, width=60)  # Ajusta el ancho aquí
+    # Agregar un cuadro de texto para ingresar comentarios
+    cuadro_comentarios = tk.Text(ventana_grafico, height=5, width=60)
     cuadro_comentarios.grid(row=1, column=0, padx=10, pady=10)
+
+    # Inserta el texto inicial en el cuadro de comentarios
+    texto_inicial = "Escribe aquí tus comentarios..."
+    cuadro_comentarios.insert("1.0", texto_inicial)
 
     # Crear el botón de "Guardar" y ubicarlo a la derecha del gráfico
     boton_guardar = tk.Button(ventana_grafico, text="Guardar", command=lambda: guardar_grafico(cuadro_comentarios))
@@ -413,7 +417,7 @@ def graficar(x=None, y=None, ancho=None, alto=None, angulo=None):
 
                     # Actualiza el título del gráfico con las coordenadas
                     axes_grafico.set_title(
-                        f'Promedio del Espectro por píxel en el área circular (Centro: ({centro_x}, {centro_y}), Radio: {radio})')
+                        f'Espectro por píxel en el área circular (Centro: ({centro_x:.2f}, {centro_y:.2f}), Radio: {radio:.2f})')
                     figura_grafico.canvas.draw()
             elif cuadrado_activado:
                 for i, cuadrado in enumerate(cuadrados_dibujados):
@@ -466,7 +470,8 @@ def graficar(x=None, y=None, ancho=None, alto=None, angulo=None):
                     axes_grafico.set_ylabel('Intensidad')
                     # Actualiza el título del gráfico con la información de la elipse y el promedio
                     axes_grafico.set_title(
-                        f'Promedio del Espectro por píxel en el área de la elipse (Centro: ({centro_x}, {centro_y}), Ancho: {ancho}, Alto: {alto})')
+                        'Espectro por píxel en el área de la elipse (Centro: ({:.2f}, {:.2f}), Ancho: {:.2f}, Alto: {:.2f})'.format(
+                            centro_x, centro_y, ancho, alto))
                     figura_grafico.canvas.draw()
                     ventanas_grafico.append(ventana_grafico)
         except ValueError:
@@ -1055,35 +1060,84 @@ def actualizar_estado_menu():
         ver_menu.entryconfig("Ver Encabezado", state=tk.NORMAL)
 
 
+
 def ver_graficos():
-    # Obtener todas las imágenes y nombres de la colección "Graphics"
-    imagenes = list(graphics_collection.find({}, {"_id": 0, "nombre": 1, "imagen": 1}))
+    # Obtener todos los nombres de los gráficos de la colección "Graphics"
+    nombres_graficos = [info["nombre"] for info in graphics_collection.find({}, {"_id": 0, "nombre": 1})]
 
-    # Crear una nueva ventana para mostrar las imágenes y nombres
+    if not nombres_graficos:
+        messagebox.showinfo("No hay gráficos", "No se encontraron gráficos en la base de datos.")
+        return
+
+    # Crear una nueva ventana para mostrar la lista de nombres de gráficos
     ventana_graficos = tk.Toplevel()
-    ventana_graficos.title("Imágenes de Gráficos")
+    ventana_graficos.title("Lista de Gráficos")
 
-    # Crear una lista desplegable para seleccionar las imágenes
-    lista_imagenes = tk.Listbox(ventana_graficos)
-    lista_imagenes.pack()
+    # Crear una lista desplegable para seleccionar los nombres de los gráficos
+    lista_graficos = tk.Listbox(ventana_graficos)
+    lista_graficos.pack()
 
-    nombres_graficos = []  # Lista para almacenar los nombres de los gráficos
+    for nombre_grafico in nombres_graficos:
+        lista_graficos.insert(tk.END, nombre_grafico)
 
-    for i, imagen_info in enumerate(imagenes):
-        nombre_grafico = imagen_info["nombre"]
-        nombres_graficos.append(nombre_grafico)  # Agregar el nombre a la lista
+    # Función para mostrar el gráfico seleccionado
+    def mostrar_grafico_seleccionado():
+        seleccion = lista_graficos.curselection()
+        if seleccion:
+            indice_seleccionado = seleccion[0]  # Obtener el índice de la selección
+            nombre_seleccionado = nombres_graficos[indice_seleccionado]
 
-        # Agregar el nombre del gráfico a la lista desplegable
-        lista_imagenes.insert(tk.END, nombre_grafico)
+            # Obtener los datos del gráfico seleccionado de la colección "Graphics"
+            grafico_info = graphics_collection.find_one({"nombre": nombre_seleccionado})
 
-        # Definir una función de callback para mostrar la imagen seleccionada
-        def mostrar_imagen(event, indice=i):
-            imagen_mostrar = Image.open(io.BytesIO(imagenes[indice]["imagen"]))
-            imagen_mostrar.show()
+            # Crear una nueva ventana para mostrar el gráfico y el comentario
+            ventana_grafico_seleccionado = tk.Toplevel()
+            ventana_grafico_seleccionado.title(f"Gráfico: {nombre_seleccionado}")
 
-        lista_imagenes.bind("<Double-Button-1>", mostrar_imagen)
+            # Convertir los datos de imagen en una imagen PIL
+            imagen_data = grafico_info.get("imagen", b"")
+            imagen_pil = Image.open(io.BytesIO(imagen_data))
 
+            # Mostrar la imagen utilizando ImageTk para tkinter
+            imagen_tk = ImageTk.PhotoImage(imagen_pil)
+            etiqueta_imagen = tk.Label(ventana_grafico_seleccionado, image=imagen_tk)
+            etiqueta_imagen.image = imagen_tk  # Evita que la imagen se elimine por la recolección de basura
+            etiqueta_imagen.pack()
 
+            # Mostrar el comentario del gráfico
+            comentario = grafico_info.get("comentario", "Sin comentario")
+            etiqueta_comentario = tk.Label(ventana_grafico_seleccionado, text=f"Comentario: {comentario}")
+            etiqueta_comentario.pack()
+
+            # Agregar un botón de descarga
+            boton_descargar = tk.Button(
+                ventana_grafico_seleccionado,
+                text="Descargar",
+                command=lambda: descargar_imagen(imagen_data, nombre_seleccionado)
+            )
+            boton_descargar.pack()
+
+    def descargar_imagen(imagen_data, nombre_grafico):
+        if not imagen_data:
+            messagebox.showinfo("Sin imagen", "No hay imagen para descargar.")
+            return
+
+        # Pedir al usuario una ubicación de archivo para guardar la imagen
+        archivo_destino = filedialog.asksaveasfilename(
+            defaultextension=".png",
+            filetypes=[("Archivos PNG", "*.png"), ("Todos los archivos", "*.*")],
+            title="Guardar Imagen"
+        )
+
+        if archivo_destino:
+            with open(archivo_destino, "wb") as archivo:
+                archivo.write(imagen_data)
+
+            messagebox.showinfo("Descargado", f"Imagen '{nombre_grafico}.png' descargada con éxito.")
+
+    # Agregar un botón para ver el gráfico seleccionado
+    boton_ver = tk.Button(ventana_graficos, text="Ver Gráfico", command=mostrar_grafico_seleccionado)
+    boton_ver.pack()
 # Crear una función para configurar el menú
 def configurar_menu():
     global ver_menu
