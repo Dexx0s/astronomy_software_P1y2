@@ -1,6 +1,10 @@
+import io
+
 import numpy as np
 import tkinter as tk
-from tkinter import filedialog, messagebox, Toplevel, Menu
+from tkinter import filedialog, messagebox, Toplevel, Menu, simpledialog
+
+from PIL import Image
 from astropy.io import fits
 import pymongo
 from datetime import datetime
@@ -87,8 +91,8 @@ file_collection = base_datos["File_collection"]
 data_collection = base_datos["Data_collection"]
 # Graphics
 graphics_collection = base_datos["Graphics"]
-# Comments
-comments_collection = base_datos["Comments"]
+# Mascaras de area libre guardadas
+mask_collection = base_datos["masks"]
 
 ventanas_grafico = []
 # Función para cargar la imagen FITS actual
@@ -146,15 +150,52 @@ def cargar_imagen_desde_barra(event):
 # Función para crear una ventana emergente para el gráfico
 def crear_ventana_grafico():
     global ventana_grafico, figura_grafico, axes_grafico, canvas_grafico, ventana_grafico_abierta
-    ventana_grafico = Toplevel()
+    ventana_grafico = tk.Toplevel()
     ventana_grafico.title("Gráfico del Espectro")
     figura_grafico, axes_grafico = plt.subplots(figsize=(8, 5))
+
+    # Ubica el gráfico en la fila 0 y columna 0
     canvas_grafico = FigureCanvasTkAgg(figura_grafico, master=ventana_grafico)
-    canvas_grafico.get_tk_widget().pack()
+    canvas_grafico.get_tk_widget().grid(row=0, column=0, padx=10, pady=10)
+
     ventana_grafico.protocol("WM_DELETE_WINDOW", cerrar_ventana_grafico)
+
+    # Agregar un cuadro de texto para ingresar comentarios (más ancho)
+    cuadro_comentarios = tk.Text(ventana_grafico, height=5, width=60)  # Ajusta el ancho aquí
+    cuadro_comentarios.grid(row=1, column=0, padx=10, pady=10)
+
+    # Crear el botón de "Guardar" y ubicarlo a la derecha del gráfico
+    boton_guardar = tk.Button(ventana_grafico, text="Guardar", command=lambda: guardar_grafico(cuadro_comentarios))
+    boton_guardar.grid(row=0, column=1, padx=10, pady=10)  # Ubica el botón en la misma fila y columna 1 al lado derecho
+
     ventana_grafico.button_salir = tk.Button(ventana_grafico, text="Salir", command=ventana_grafico.destroy)
-    ventana_grafico.button_salir.pack()
+    ventana_grafico.button_salir.grid(row=2, column=0, columnspan=2)  # Ubica el botón de salir en la fila 2 y columnas 0 y 1
+
     ventanas_grafico.append(ventana_grafico)
+
+def guardar_grafico(cuadro_comentarios):
+    global figura_grafico  # Asegúrate de que la figura sea global y accesible aquí
+
+    # Pide al usuario que ingrese un nombre para el gráfico
+    nombre_grafico = simpledialog.askstring("Guardar Gráfico", "Ingresa un nombre para el gráfico:")
+    if nombre_grafico is None:
+        nombre_grafico = f"Gráfico {len(ventanas_grafico) + 1}"  # Nombre por defecto
+
+    # Crear un objeto de bytes en memoria para guardar la imagen
+    buf = io.BytesIO()
+    figura_grafico.savefig(buf, format='png')
+    buf.seek(0)
+
+    # Obtener el comentario del cuadro de texto
+    comentario = cuadro_comentarios.get("1.0", "end-1c")
+
+    # Insertar el objeto de bytes en la colección "Graphics" junto con el nombre y el comentario
+    graphics_collection.insert_one({'nombre': nombre_grafico, 'imagen': buf.read(), 'comentario': comentario})
+
+    # Mostrar un mensaje de confirmación al usuario
+    messagebox.showinfo("Guardar", f"Gráfico '{nombre_grafico}' y comentario guardados en MongoDB.")
+
+
 # Función para cerrar la ventana emergente del gráfico
 def cerrar_ventana_grafico():
     global ventana_grafico
@@ -908,8 +949,33 @@ def actualizar_estado_menu():
         ver_menu.entryconfig("Ver Encabezado", state=tk.NORMAL)
 
 def ver_graficos():
-    # Aquí implementa la lógica para ver gráficos desde MongoDB
-    pass
+    # Obtener todas las imágenes y nombres de la colección "Graphics"
+    imagenes = list(graphics_collection.find({}, {"_id": 0, "nombre": 1, "imagen": 1}))
+
+    # Crear una nueva ventana para mostrar las imágenes y nombres
+    ventana_graficos = tk.Toplevel()
+    ventana_graficos.title("Imágenes de Gráficos")
+
+    # Crear una lista desplegable para seleccionar las imágenes
+    lista_imagenes = tk.Listbox(ventana_graficos)
+    lista_imagenes.pack()
+
+    nombres_graficos = []  # Lista para almacenar los nombres de los gráficos
+
+    for i, imagen_info in enumerate(imagenes):
+        nombre_grafico = imagen_info["nombre"]
+        nombres_graficos.append(nombre_grafico)  # Agregar el nombre a la lista
+
+        # Agregar el nombre del gráfico a la lista desplegable
+        lista_imagenes.insert(tk.END, nombre_grafico)
+
+        # Definir una función de callback para mostrar la imagen seleccionada
+        def mostrar_imagen(event, indice=i):
+            imagen_mostrar = Image.open(io.BytesIO(imagenes[indice]["imagen"]))
+            imagen_mostrar.show()
+
+        lista_imagenes.bind("<Double-Button-1>", mostrar_imagen)
+
 
 # Crear una función para configurar el menú
 def configurar_menu():
