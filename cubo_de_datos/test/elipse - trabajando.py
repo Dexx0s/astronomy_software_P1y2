@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 import matplotlib.path as mpath
 import numpy as np
 from tkinter import ttk
+from matplotlib.widgets import Slider
 
 data_id = str(uuid.uuid4())
 graphic_id = str(uuid.uuid4())
@@ -477,6 +478,112 @@ def graficar(x=None, y=None, ancho=None, alto=None, angulo=None):
         except ValueError:
             messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
 
+def comparar_graficos(x=None, y=None, ancho=None, alto=None, angulo=None):
+    global circulos_dibujados, cuadrados_dibujados, elipses_dibujadas, datos_cubo, figura_grafico, axes_grafico, ventana_grafico_abierta, linea_grafico
+    global ventana_grafico, ventanas_grafico
+    global circulo_activado, cuadrado_activado, eclipse_activado, pixel_activado, puntos
+
+    ventana_grafico_abierta = False
+
+    if datos_cubo is not None:
+        try:
+            figuras_a_graficar = []
+
+            if pixel_activado:
+                for i, (x, y) in enumerate(pixeles_seleccionados):
+                    if x and y:
+                        x = int(x)
+                        y = int(y)
+                        if 0 <= x < datos_cubo.shape[2] and 0 <= y < datos_cubo.shape[1]:
+                            espectro = datos_cubo[:, y, x]
+                            figura_a_graficar = {
+                                'espectro': espectro,
+                                'titulo': f'Espectro del píxel ({x}, {y})'
+                            }
+                            figuras_a_graficar.append(figura_a_graficar)
+
+            elif circulo_activado:
+                for i, circulo in enumerate(circulos_dibujados):
+                    centro_x, centro_y = circulo.center
+                    radio = circulo.radius
+                    y, x = np.ogrid[-centro_y:datos_cubo.shape[1] - centro_y, -centro_x:datos_cubo.shape[2] - centro_x]
+                    mascara = x ** 2 + y ** 2 <= radio ** 2
+                    espectro = datos_cubo[:, mascara]
+
+                    # Calcula el promedio del espectro por píxel dentro del área circular
+                    espectro_promedio = np.mean(espectro, axis=1)
+                    figura_a_graficar = {
+                        'espectro': espectro_promedio,
+                        'titulo': f'Promedio del Espectro por píxel en el área circular (Centro: ({centro_x}, {centro_y}), Radio: {radio})'
+                    }
+                    figuras_a_graficar.append(figura_a_graficar)
+
+            elif cuadrado_activado:
+                for i, cuadrado in enumerate(cuadrados_dibujados):
+                    x_cuadrado, y_cuadrado = cuadrado.get_x(), cuadrado.get_y()
+                    lado_cuadrado = cuadrado.get_width()
+                    x1, x2 = int(x_cuadrado), int(x_cuadrado + lado_cuadrado)
+                    y1, y2 = int(y_cuadrado), int(y_cuadrado + lado_cuadrado)
+
+                    if 0 <= x1 < datos_cubo.shape[2] and 0 <= y1 < datos_cubo.shape[1] and \
+                            0 <= x2 < datos_cubo.shape[2] and 0 <= y2 < datos_cubo.shape[1]:
+                        espectro = datos_cubo[:, y1:y2, x1:x2]
+                        espectro_promedio = np.mean(espectro, axis=(1, 2))
+                        figura_a_graficar = {
+                            'espectro': espectro_promedio,
+                            'titulo': f'Promedio del Espectro por píxel en el área cuadrada (Inicio: ({x1}, {y1}), Lado: {lado_cuadrado})'
+                        }
+                        figuras_a_graficar.append(figura_a_graficar)
+
+            elif eclipse_activado:
+                for i, elipse in enumerate(elipses_dibujadas):
+                    centro_x, centro_y = elipse.center
+                    ancho = elipse.width
+                    alto = elipse.height
+                    y, x = np.ogrid[-centro_y:datos_cubo.shape[1] - centro_y, -centro_x:datos_cubo.shape[2] - centro_x]
+                    mascara = ((x / (ancho / 2)) ** 2 + (y / (alto / 2)) ** 2) <= 1
+                    espectro = datos_cubo[:, mascara]
+                    espectro_promedio = np.mean(espectro, axis=1)
+                    figura_a_graficar = {
+                        'espectro': espectro_promedio,
+                        'titulo': f'Promedio del Espectro por píxel en el área de la elipse (Centro: ({centro_x}, {centro_y}), Ancho: {ancho}, Alto: {alto})'
+                    }
+                    figuras_a_graficar.append(figura_a_graficar)
+
+            if figuras_a_graficar:
+                # Crear una nueva ventana para el gráfico
+                crear_ventana_grafico()
+                ventana_grafico_abierta = True
+
+                for figura in figuras_a_graficar:
+                    espectro = figura['espectro']
+                    titulo = figura['titulo']
+
+                    # Crear una nueva línea para el gráfico
+                    linea_grafico, = axes_grafico.plot(espectro, lw=2)
+
+                    # Establecer los límites de los ejes x e y
+                    axes_grafico.set_xlim(0, len(espectro) - 1)
+                    axes_grafico.set_ylim(np.min(espectro) - 0.0002, np.max(espectro))
+
+                    # Actualizar el título del gráfico con las coordenadas
+                    axes_grafico.set_title(titulo)
+
+                # Añadir la barra de desplazamiento (slider) para el zoom
+                ax_zoom = plt.axes([0.1, 0.02, 0.65, 0.03])
+                slider_zoom = Slider(ax_zoom, 'Zoom', 1, 10, valinit=1)
+
+                def actualizar_zoom(val):
+                    factor_zoom = slider_zoom.val
+                    ax = linea_grafico.axes
+                    ax.set_ylim(np.min(espectro) - 0.0002, np.max(espectro) * factor_zoom)
+                    ax.figure.canvas.draw()
+
+                slider_zoom.on_changed(actualizar_zoom)
+
+                figura_grafico.canvas.draw()
+        except ValueError:
+            messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
 
 def graficar_coordenadas():
     global datos_cubo, pixeles_seleccionados, pixeles_dibujados
@@ -1188,6 +1295,9 @@ entrada_coord_y.grid(row=1, column=4, padx=5, pady=5)
 boton_graficar_coordenadas = tk.Button(ventana, text="Graficar Coordenadas", command=graficar_coordenadas)
 boton_graficar_coordenadas.grid(row=0, column=2, padx=5, pady=5)
 
+
+boton_comparar_graficos = tk.Button(ventana, text="Comparar Gráficos", command=comparar_graficos)
+boton_comparar_graficos.grid(row=0, column=3, padx=5, pady=5)
 
 
 ##entry para ir directamente a un frame
