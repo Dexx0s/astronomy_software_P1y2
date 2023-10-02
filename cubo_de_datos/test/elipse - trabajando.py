@@ -473,6 +473,34 @@ def graficar(x=None, y=None, ancho=None, alto=None, angulo=None):
             messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
 
 
+def graficar_coordenadas():
+    global datos_cubo, pixeles_seleccionados, pixeles_dibujados
+    x = entrada_coord_x.get()
+    y = entrada_coord_y.get()
+    if x and y:
+        x = int(x)
+        y = int(y)
+        if 0 <= x < datos_cubo.shape[2] and 0 <= y < datos_cubo.shape[1]:
+            espectro = datos_cubo[:, y, x]
+
+            # Dibuja el pixel en la gráfica
+            tamaño_punto = 4
+            pixel = ax.scatter(x, y, color='red', s=tamaño_punto)
+            pixeles_dibujados.append(pixel)
+            canvas.draw()
+
+            # Grafica el espectro del pixel
+            crear_ventana_grafico()
+            linea_grafico, = axes_grafico.plot(espectro, lw=2)
+            axes_grafico.set_xlim(0, len(espectro) - 1)
+            axes_grafico.set_ylim(-0.0002, max(espectro))
+            axes_grafico.set_title(f'Espectro del píxel ({x}, {y})')
+            figura_grafico.canvas.draw()
+        else:
+            messagebox.showerror("Error", "Coordenadas fuera de los límites de la imagen.")
+    else:
+        messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
+
 # Cambia esta parte en la función on_image_click
 def on_image_click(event):
     global area_libre_activa, puntos
@@ -1102,6 +1130,11 @@ etiqueta_coord_y.grid(row=1, column=3, padx=5, pady=5, sticky="e")
 
 entrada_coord_y = tk.Entry(ventana)
 entrada_coord_y.grid(row=1, column=4, padx=5, pady=5)
+
+boton_graficar_coordenadas = tk.Button(ventana, text="Graficar Coordenadas", command=graficar_coordenadas)
+boton_graficar_coordenadas.grid(row=0, column=2, padx=5, pady=5)
+
+
 
 ##entry para ir directamente a un frame
 etiqueta_coord_z = tk.Label(ventana, text="imagen:")
