@@ -388,8 +388,7 @@ def graficar(x=None, y=None, ancho=None, alto=None, angulo=None):
                 else:
                     messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
             elif circulo_activado:
-                if len(circulos_dibujados) == 1:
-                    circulo = circulos_dibujados[0]
+                for i, circulo in enumerate(circulos_dibujados):
                     centro_x, centro_y = circulo.center
                     radio = circulo.radius
                     y, x = np.ogrid[-centro_y:datos_cubo.shape[1] - centro_y, -centro_x:datos_cubo.shape[2] - centro_x]
@@ -399,28 +398,23 @@ def graficar(x=None, y=None, ancho=None, alto=None, angulo=None):
                     # Calcula el promedio del espectro por píxel dentro del área circular
                     espectro_promedio = np.mean(espectro, axis=1)
 
-                    if not ventana_grafico_abierta:
-                        crear_ventana_grafico()
-                        linea_grafico, = axes_grafico.plot(espectro_promedio, lw=2)
-                        axes_grafico.set_xlabel('Frame')
-                        axes_grafico.set_ylabel('Intensidad')
-                        ventana_grafico_abierta = True
-                    else:
-                        linea_grafico.set_ydata(espectro_promedio)
+                    # Crea una nueva ventana para el gráfico
+                    crear_ventana_grafico()
+                    ventana_grafico_abierta = True
 
+                    # Crea una nueva línea para el gráfico
+                    linea_grafico, = axes_grafico.plot(espectro_promedio, lw=2)
+
+                    # Establecer los límites de los ejes x e y
                     axes_grafico.set_xlim(0, len(espectro_promedio) - 1)
                     axes_grafico.set_ylim(np.min(espectro_promedio) - 0.0002, np.max(espectro_promedio))
 
-                    # Actualiza el título del gráfico con la información del círculo y el promedio
+                    # Actualiza el título del gráfico con las coordenadas
                     axes_grafico.set_title(
                         f'Promedio del Espectro por píxel en el área circular (Centro: ({centro_x}, {centro_y}), Radio: {radio})')
                     figura_grafico.canvas.draw()
-                else:
-                    messagebox.showerror("Error",
-                                         "Selecciona exactamente un círculo para graficar el promedio del espectro por píxel.")
             elif cuadrado_activado:
-                if len(cuadrados_dibujados) == 1:
-                    cuadrado = cuadrados_dibujados[0]
+                for i, cuadrado in enumerate(cuadrados_dibujados):
                     x_cuadrado, y_cuadrado = cuadrado.get_x(), cuadrado.get_y()
                     lado_cuadrado = cuadrado.get_width()
                     x1, x2 = int(x_cuadrado), int(x_cuadrado + lado_cuadrado)
@@ -433,15 +427,14 @@ def graficar(x=None, y=None, ancho=None, alto=None, angulo=None):
                         # Calcula el promedio del espectro por píxel dentro del área del cuadrado
                         espectro_promedio = np.mean(espectro, axis=(1, 2))
 
-                        if not ventana_grafico_abierta:
-                            crear_ventana_grafico()
-                            linea_grafico, = axes_grafico.plot(espectro_promedio, lw=2)
-                            axes_grafico.set_xlabel('Frame')
-                            axes_grafico.set_ylabel('Intensidad')
-                            ventana_grafico_abierta = True
-                        else:
-                            linea_grafico.set_ydata(espectro_promedio)
+                        # Crea una nueva ventana para el gráfico
+                        crear_ventana_grafico()
+                        ventana_grafico_abierta = True
 
+                        # Crea una nueva línea para el gráfico
+                        linea_grafico, = axes_grafico.plot(espectro_promedio, lw=2)
+
+                        # Establecer los límites de los ejes x e y
                         axes_grafico.set_xlim(0, len(espectro_promedio) - 1)
                         axes_grafico.set_ylim(np.min(espectro_promedio) - 0.0002, np.max(espectro_promedio))
 
@@ -451,9 +444,6 @@ def graficar(x=None, y=None, ancho=None, alto=None, angulo=None):
                         figura_grafico.canvas.draw()
                     else:
                         messagebox.showerror("Error", "Coordenadas del cuadrado fuera de los límites de la imagen.")
-                else:
-                    messagebox.showerror("Error",
-                                         "Selecciona exactamente un cuadrado para graficar el promedio del espectro por píxel.")
             elif eclipse_activado:
                 print("grafico")
                 for i, elipse in enumerate(elipses_dibujadas):
