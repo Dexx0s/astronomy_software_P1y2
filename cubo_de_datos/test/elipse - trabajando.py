@@ -82,6 +82,9 @@ ultimo_cuadrado = None  # Variable para mantener un seguimiento del último cuad
 
 # Variables para el pixel
 ultimo_punto = None
+pixeles_seleccionados = []
+pixeles_dibujados = []
+
 
 cliente = pymongo.MongoClient("mongodb://localhost:27017/")
 base_datos = cliente["Astronomy"]
@@ -361,32 +364,31 @@ def graficar(x=None, y=None, ancho=None, alto=None, angulo=None):
     if datos_cubo is not None:
         try:
             if pixel_activado:
-                x, y = x_pixel, y_pixel
-                if x and y:
-                    x = int(x)
-                    y = int(y)
-                    if 0 <= x < datos_cubo.shape[2] and 0 <= y < datos_cubo.shape[1]:
-                        espectro = datos_cubo[:, y, x]
+                for i, (x, y) in enumerate(pixeles_seleccionados):
+                    if x and y:
+                        x = int(x)
+                        y = int(y)
+                        if 0 <= x < datos_cubo.shape[2] and 0 <= y < datos_cubo.shape[1]:
+                            espectro = datos_cubo[:, y, x]
 
-                        # Crea una nueva ventana solo una vez
-                        if not ventana_grafico_abierta:
+                            # Crea una nueva ventana para el gráfico
                             crear_ventana_grafico()
                             ventana_grafico_abierta = True
 
-                        # Crea una nueva línea para el gráfico
-                        linea_grafico, = axes_grafico.plot(espectro, lw=2)
+                            # Crea una nueva línea para el gráfico
+                            linea_grafico, = axes_grafico.plot(espectro, lw=2)
 
-                        # Establecer los límites de los ejes x e y
-                        axes_grafico.set_xlim(0, len(espectro) - 1)
-                        axes_grafico.set_ylim(-0.0002, max(espectro))
+                            # Establecer los límites de los ejes x e y
+                            axes_grafico.set_xlim(0, len(espectro) - 1)
+                            axes_grafico.set_ylim(-0.0002, max(espectro))
 
-                        # Actualiza el título del gráfico con las coordenadas
-                        axes_grafico.set_title(f'Espectro del píxel ({x}, {y})')
-                        figura_grafico.canvas.draw()
+                            # Actualiza el título del gráfico con las coordenadas
+                            axes_grafico.set_title(f'Espectro del píxel ({x}, {y})')
+                            figura_grafico.canvas.draw()
+                        else:
+                            messagebox.showerror("Error", "Coordenadas fuera de los límites de la imagen.")
                     else:
-                        messagebox.showerror("Error", "Coordenadas fuera de los límites de la imagen.")
-                else:
-                    messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
+                        messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
             elif circulo_activado:
                 for i, circulo in enumerate(circulos_dibujados):
                     centro_x, centro_y = circulo.center
@@ -609,19 +611,19 @@ def dibujar_circulo(event):
 
 
 def dibujar_pixel(event):
-    global pixel_activado, ultimo_punto, x_pixel, y_pixel
+    global pixel_activado, ultimo_punto, pixeles_seleccionados, pixeles_dibujados
     if pixel_activado and event.xdata is not None and event.ydata is not None:
         x, y = event.xdata, event.ydata
         print(f"x: {x}, y: {y}")  # Agrega esta línea para imprimir las coordenadas
         # Solo para que el punto sea visible segun el pixel seleccionado por el usuario
         tamaño_punto = 4
-        punto = ax.scatter(x, y, color='red', s=tamaño_punto)
-        puntos_dibujados.append(punto)
-        ultimo_punto = punto
-        # Actualiza las variables globales para su uso posterior al presionar el botón de graficar
-        x_pixel, y_pixel = x, y
-
-    canvas.draw()
+        pixel = ax.scatter(x, y, color='red', s=tamaño_punto)
+        pixeles_dibujados.append(pixel)
+        ultimo_punto = pixel
+        # Agrega las coordenadas del pixel a la lista de pixeles seleccionados
+        pixeles_seleccionados.append((x, y))
+        # Actualiza la gráfica
+        canvas.draw()
 
 
 def graficar_area_libre():
@@ -864,15 +866,17 @@ def cerrar_ventana_principal():
 
 
 def borrar_figuras():
-    global cuadrados_dibujados, ultima_elipse, ultimo_circulo, ultimo_punto
+    global cuadrados_dibujados, ultima_elipse, ultimo_circulo, ultimo_punto, pixeles_dibujados, pixeles_seleccionados
 
     if circulo_activado:
         for circulo in circulos_dibujados:
             circulo.remove()
         circulos_dibujados.clear()  # Limpia la lista de círculos dibujados
     elif pixel_activado:
-        for punto in puntos_dibujados:
-            punto.remove()
+        for pixel in pixeles_dibujados:
+            pixel.remove()
+        pixeles_dibujados.clear()  # Limpia la lista de píxeles dibujados
+        pixeles_seleccionados.clear()  # Limpia la lista de píxeles seleccionados
     elif eclipse_activado:
         for elipse in elipses_dibujadas:
             elipse.remove()
@@ -897,8 +901,7 @@ def borrar_figuras():
 
 
 def borrar_ultima_figura():
-    global circulos_dibujados, elipses_dibujadas, cuadrados_dibujados, ultima_elipse, ultimo_circulo, ultimo_cuadrado
-    global puntos_dibujados, ultimo_punto
+    global circulos_dibujados, elipses_dibujadas, cuadrados_dibujados, ultima_elipse, ultimo_circulo, ultimo_cuadrado, pixeles_dibujados, pixeles_seleccionados
 
     if circulo_activado:
         if circulos_dibujados:
@@ -910,14 +913,13 @@ def borrar_ultima_figura():
                 ultimo_circulo = None  # Si no hay más círculos, establece el último_círculo a None
             canvas.draw()
     elif pixel_activado:
-        if puntos_dibujados:
-            ultimo_punto.remove()
-            puntos_dibujados.pop()
-            if puntos_dibujados:
-                ultimo_punto = puntos_dibujados[-1]
-            else:
-                ultimo_punto = None
-            canvas.draw()
+        if pixel_activado:
+            if pixeles_dibujados:
+                ultimo_pixel = pixeles_dibujados[-1]
+                ultimo_pixel.remove()
+                pixeles_dibujados.pop()  # Elimina el último pixel de la lista
+                pixeles_seleccionados.pop()  # Elimina las coordenadas del último pixel de la lista
+                canvas.draw()  # Actualiza la gráfica
     elif eclipse_activado:
         if elipses_dibujadas:
             ultima_elipse.remove()
