@@ -514,7 +514,7 @@ def comparar_graficos(x=None, y=None, ancho=None, alto=None, angulo=None):
                     espectro_promedio = np.mean(espectro, axis=1)
                     figura_a_graficar = {
                         'espectro': espectro_promedio,
-                        'titulo': f'Promedio del Espectro por píxel en el área circular (Centro: ({centro_x}, {centro_y}), Radio: {radio})'
+                        'titulo': f'Área circular (Centro: ({centro_x}, {centro_y}), Radio: {radio})'
                     }
                     figuras_a_graficar.append(figura_a_graficar)
 
@@ -531,7 +531,7 @@ def comparar_graficos(x=None, y=None, ancho=None, alto=None, angulo=None):
                         espectro_promedio = np.mean(espectro, axis=(1, 2))
                         figura_a_graficar = {
                             'espectro': espectro_promedio,
-                            'titulo': f'Promedio del Espectro por píxel en el área cuadrada (Inicio: ({x1}, {y1}), Lado: {lado_cuadrado})'
+                            'titulo': f'Área cuadrada (Inicio: ({x1}, {y1}), Lado: {lado_cuadrado})'
                         }
                         figuras_a_graficar.append(figura_a_graficar)
 
@@ -546,7 +546,7 @@ def comparar_graficos(x=None, y=None, ancho=None, alto=None, angulo=None):
                     espectro_promedio = np.mean(espectro, axis=1)
                     figura_a_graficar = {
                         'espectro': espectro_promedio,
-                        'titulo': f'Promedio del Espectro por píxel en el área de la elipse (Centro: ({centro_x}, {centro_y}), Ancho: {ancho}, Alto: {alto})'
+                        'titulo': f'Área de la elipse (Centro: ({centro_x}, {centro_y}), Ancho: {ancho}, Alto: {alto})'
                     }
                     figuras_a_graficar.append(figura_a_graficar)
 
@@ -560,14 +560,14 @@ def comparar_graficos(x=None, y=None, ancho=None, alto=None, angulo=None):
                     titulo = figura['titulo']
 
                     # Crear una nueva línea para el gráfico
-                    linea_grafico, = axes_grafico.plot(espectro, lw=2)
+                    linea_grafico, = axes_grafico.plot(espectro, lw=2, label=titulo)  # Agregar etiqueta a la línea
 
                     # Establecer los límites de los ejes x e y
                     axes_grafico.set_xlim(0, len(espectro) - 1)
                     axes_grafico.set_ylim(np.min(espectro) - 0.0002, np.max(espectro))
 
-                    # Actualizar el título del gráfico con las coordenadas
-                    axes_grafico.set_title(titulo)
+                # Añadir la leyenda al gráfico
+                axes_grafico.legend(loc='upper right')  # Puedes cambiar la ubicación de la leyenda según lo necesites
 
                 # Añadir la barra de desplazamiento (slider) para el zoom
                 ax_zoom = plt.axes([0.1, 0.02, 0.65, 0.03])
@@ -725,7 +725,7 @@ def dibujar_cuadrado(event):
     if cuadrado_activado and event.xdata is not None and event.ydata is not None:
         x, y = event.xdata, event.ydata
         lado = 10  # Puedes ajustar el tamaño del cuadrado según tus preferencias
-        cuadrado = Rectangle((x - lado / 2, y - lado / 2), lado, lado, color='green', fill=False)
+        cuadrado = Rectangle((x - lado / 2, y - lado / 2), lado, lado, color='yellow', fill=False)
         ax.add_patch(cuadrado)
         cuadrados_dibujados.append(cuadrado)  # Agrega el cuadrado a la lista de cuadrados dibujados
         ultimo_cuadrado = cuadrado  # Actualiza el último cuadrado dibujado
