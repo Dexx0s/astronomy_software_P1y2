@@ -80,7 +80,7 @@ circulo_dibujado = None
 # variables para cuadrado
 cuadrados_dibujados = []  # Lista para almacenar los cuadrados dibujados
 ultimo_cuadrado = None  # Variable para mantener un seguimiento del último cuadrado dibujado
-
+dibujando_cuadrado = False
 # Variables para el pixel
 ultimo_punto = None
 pixeles_seleccionados = []
@@ -613,7 +613,7 @@ def graficar_coordenadas():
     else:
         messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
 
-# Cambia esta parte en la función on_image_click
+
 def on_image_click(event):
     global area_libre_activa, puntos
     global circulo_activado, centro_x, centro_y, radio, dibujando_circulo, ultimo_clic
@@ -695,7 +695,29 @@ def on_image_click(event):
                         dibujar_elipse(event)
                         # Restablece las variables de la elipse después de dibujarla
                         centro_x, centro_y, ancho, alto = None, None, None, None
+        elif cuadrado_activado:
+            # MECANISMO PARA CUADRADO
+            if (pixel_activado == False and movimiento_activado == False) and event.x and event.y:
+                # Verificar que no sea un doble clic
+                if ultimo_clic == (event.x, event.y):
+                    return
 
+                if not dibujando_cuadrado:
+                    # Restablecer variables si se cancela el dibujo del cuadrado
+                    centro_x, centro_y, lado = None, None, None
+                # Actualizar el estado del último clic
+                ultimo_clic = (event.x, event.y)
+
+                if dibujando_cuadrado:
+                    if centro_x is None and centro_y is None:
+                        # Primer clic: establece el centro del cuadrado
+                        centro_x, centro_y = event.x, event.y
+                    else:
+                        # Segundo clic: calcula el lado y dibuja el cuadrado
+                        lado = abs(event.x - centro_x) * 2
+                        dibujar_cuadrado(event)
+                        # Restablece las variables del cuadrado después de dibujarlo
+                        centro_x, centro_y, lado = None, None, None
 
 # Funcion para dibujar una elipse
 def dibujar_elipse(event):
@@ -706,7 +728,7 @@ def dibujar_elipse(event):
         x, y = event.xdata, event.ydata
         ancho = 20
         alto = 10
-        elipse = Ellipse((x, y), width=ancho, height=alto, angle=0, color='blue', fill=False)
+        elipse = Ellipse((x, y), width=ancho, height=alto, angle=0,color=(0/255, 255/255, 255/255), fill=False)
         ax.add_patch(elipse)
         elipses_dibujadas.append(elipse)
         ultima_elipse = elipse
@@ -740,7 +762,7 @@ def dibujar_circulo(event):
     if circulo_activado and event.xdata is not None and event.ydata is not None:
         x, y = event.xdata, event.ydata
         radio = 5  # Puedes ajustar el tamaño del círculo según tus preferencias
-        circulo = Circle((x, y), radio, color='red', fill=False)
+        circulo = Circle((x, y), radio,color=(0/255, 255/255, 0/255), fill=False)
         ax.add_patch(circulo)
         circulos_dibujados.append(circulo)  # Agrega el círculo a la lista de círculos dibujados
         ultimo_circulo = circulo  # Actualiza el último círculo dibujado
@@ -1433,7 +1455,7 @@ def cambiar_tipo_figura(event):
         area_activado = True
 
     # Borrar figuras si se desactiva una opción de dibujo
-    if seleccion not in ["Circulo", "Elipse"]:
+    if seleccion not in ["Circulo", "Elipse", "Pixel", "Cuadrado"]:
         borrar_figuras()
 
     # Deshabilitar eventos relacionados con el movimiento si no está seleccionado
