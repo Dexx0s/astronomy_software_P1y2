@@ -91,17 +91,18 @@ ultimo_punto = None
 pixeles_seleccionados = []
 pixeles_dibujados = []
 
-
-cliente = pymongo.MongoClient("mongodb://localhost:27017/")
-base_datos = cliente["Astronomy"]
-# File_collection
-file_collection = base_datos["File_collection"]
-# Data_collection
-data_collection = base_datos["Data_collection"]
-# Graphics
-graphics_collection = base_datos["Graphics"]
-# Mascaras de area libre guardadas
-mask_collection = base_datos["masks"]
+switch_pymongo=0
+if switch_pymongo:
+    cliente = pymongo.MongoClient("mongodb://localhost:27017/")
+    base_datos = cliente["Astronomy"]
+    # File_collection
+    file_collection = base_datos["File_collection"]
+    # Data_collection
+    data_collection = base_datos["Data_collection"]
+    # Graphics
+    graphics_collection = base_datos["Graphics"]
+    # Mascaras de area libre guardadas
+    mask_collection = base_datos["masks"]
 
 ventanas_grafico = []
 
@@ -303,27 +304,40 @@ def abrir_archivo():
             for ext in hdul:
                 if ext.name in ["PRIMARY", "IMAGE", "DATA CUBE", "SPECTRUM", "STANDARD"]:
                     extension_valida = ext
+                    #print(extension_valida)
+                    # remueve dimensiones innecesarias (por ejemplo,
+                    # para datos de ALMA) si las hubiese
+                    extension_valida.data=extension_valida.data.squeeze()
+                    
                     # Con esto buscamos la extension buscada, para abrir solo estas.
                     break
+            
+                if extension_valida is None:
+                    raise ValueError("No es posible abrir este tipo de archivo FITS, dado que no contiene imágenes.")
 
-            if extension_valida is None:
-                raise ValueError("No es posible abrir este tipo de archivo FITS, dado que no contiene imágenes.")
+            # chequeo de datos NANs. No es necesario modificar pues
+            # tkinter lidia bien con ellos
 
-            if np.any(np.isnan(extension_valida.data)) or np.any(np.isinf(extension_valida.data)):
-                respuesta = messagebox.askquestion("Datos Inválidos",
-                                                   "El archivo FITS contiene datos inválidos (NaN o infinitos). ¿Desea convertirlos a 0?")
-
-                if respuesta == 'yes':
-                    data = remove_nans(extension_valida)
+            # if np.any(np.isnan(extension_valida.data)) or np.any(np.isinf(extension_valida.data)):
+            #     respuesta = messagebox.askquestion("Datos Inválidos",
+            #                                        "El archivo FITS contiene datos inválidos (NaN o infinitos). ¿Desea convertirlos a 0?")
+                
+            #     if respuesta == 'yes':
+            #         data = remove_nans(extension_valida)
+            #         print("nans sacados")
 
             header = extension_valida.header
-            print(header)  # Imprimir el encabezado para ver la información
-
+            # Imprimir el encabezado para ver la información
+            print(header) 
+            
             datos_cubo = extension_valida.data
             tipo_extension = extension_valida.name
             fecha_actual = datetime.now()
 
+            
             num_frames, num_rows, num_columns = datos_cubo.shape
+            print("ACA")
+
             print(f"Número de cuadros: {num_frames}")
             print(f"Número de filas: {num_rows}")
             print(f"Número de columnas: {num_columns}")
@@ -335,26 +349,30 @@ def abrir_archivo():
             boton_graficar.config(state=tk.NORMAL)
             actualizar_etiqueta_coordenadas()  # Agregado para actualizar coordenadas al cargar el archivo
             actualizar_barra_desplazamiento()
-            # Base de datos = File_Collection
-            file_info = {
-                "Data_id": data_id,  # Identificador
-                "File_name": nombre_archivo,  # File
-                "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
-                "Hora": fecha_actual.strftime("%H:%M:%S")  # Fecha segun Hora
-            }
-            file_collection.insert_one(file_info)
 
-            # Base de datos = Data_Collection
-            data_info = {
-                "Data_id": data_id,  # Identificador
-                "Filename": nombre_archivo,  # File
-                "Header": tipo_extension,  # Encabezado
-                "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
-                "Hora": fecha_actual.strftime("%H:%M:%S"),  # Fecha segun Hora
-                "Data": str(datos_cubo)  # Datos
-            }
-            data_collection.insert_one(data_info)
+            if switch_pymongo:
+                # Base de datos = File_Collection
+                file_info = {
+                    "Data_id": data_id,  # Identificador
+                    "File_name": nombre_archivo,  # File
+                    "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
+                    "Hora": fecha_actual.strftime("%H:%M:%S")  # Fecha segun Hora
+                }
+                file_collection.insert_one(file_info)
+                
+                # Base de datos = Data_Collection
+                data_info = {
+                    "Data_id": data_id,  # Identificador
+                    "Filename": nombre_archivo,  # File
+                    "Header": tipo_extension,  # Encabezado
+                    "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
+                    "Hora": fecha_actual.strftime("%H:%M:%S"),  # Fecha segun Hora
+                    "Data": str(datos_cubo)  # Datos
+                }
+                data_collection.insert_one(data_info)
 
+
+            
             actualizar_estado_menu()
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo abrir el archivo FITS: {str(e)}")
