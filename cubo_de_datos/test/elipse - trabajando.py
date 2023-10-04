@@ -59,7 +59,8 @@ puntos_dibujados = []
 lineas_grafico = []
 # Variables globales
 espectros_area_libre = []
-
+# Variables globales
+areas_libres = []
 
 # Variables relacionadas con Matplotlib
 fig = None
@@ -1057,20 +1058,21 @@ def borrar_figuras():
         cuadrados_dibujados.clear()  # Limpia la lista de cuadrados dibujados
     canvas.draw()
     # Limpia las líneas de la figura creada mediante la unión de puntos
-    for linea in lineas_figura:
-        linea.remove()
-    lineas_figura.clear()  # Limpia la lista de líneas de la figura
+    if area_libre_activa:
+        for linea in lineas_figura:
+            linea.remove()
+        lineas_figura.clear()  # Limpia la lista de líneas de la figura
 
-    # Limpia los puntos que se agregaron durante el dibujo del área libre
-    for punto in puntos_dibujados:
-        punto.remove()
-    puntos_dibujados.clear()  # Limpia la lista de puntos dibujados
-    puntos.clear()
+        # Limpia los puntos que se agregaron durante el dibujo del área libre
+        for punto in puntos_dibujados:
+            punto.remove()
+        puntos_dibujados.clear()  # Limpia la lista de puntos dibujados
+        puntos.clear()
 
-    # Limpia los espectros de las áreas libres
-    espectros_area_libre.clear()
+        # Limpia los espectros de las áreas libres
+        espectros_area_libre.clear()
 
-    canvas.draw()
+        canvas.draw()
 
 
 
