@@ -18,7 +18,8 @@ import numpy as np
 from astropy.coordinates import SkyCoord
 from astropy.io import fits
 from astropy import wcs
-from regions import Regions,PixCoord, PolygonSkyRegion, PolygonPixelRegion
+#from regions import Regions,PixCoord, PolygonSkyRegion, PolygonPixelRegion
+import regions as Reg
 from regions.core import PixCoord
 #import matplotlib.pyplot as plt
 #import glob
@@ -49,7 +50,7 @@ y=[293,296,323,268,243]
 # crea un uobjeto PixCoord necesario para usar el proximo comando
 xy=PixCoord(x,y)
 # crea una region poligonal con los pixeles anteriores
-reg_pix=PolygonPixelRegion(xy)
+reg_pix=Reg.PolygonPixelRegion(xy)
 
 # esta parte es para definir regiones a partir de otros programas (Ds9 y CASA)
 # formato ds9
@@ -73,12 +74,14 @@ shape=(int(hdu.header['NAXIS1']),int(hdu.header['NAXIS2']))
 
 # convierte la mascara en la imagen nueva
 mask_ima=mask.to_image(shape)
+output="mascara.fits"
+fits.writeto(output, mask_ima, hdu.header,overwrite=True)
 
 # si uno quisiera obtener los valores de los pixeles dentro de la mascara
 #vals=mask.get_values(data)
 
 # Divido la imagen original por la mascara 
-data/=mask_ima
+data*=mask_ima
 
 # Guardo en un archivo fits nuevo
 output='NGC2023K_poligono.fits'
