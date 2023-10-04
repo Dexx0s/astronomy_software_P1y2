@@ -481,7 +481,7 @@ def graficar(x=None, y=None, ancho=None, alto=None, angulo=None):
                     figura_grafico.canvas.draw()
                     ventanas_grafico.append(ventana_grafico)
 
-            elif area_libre_activa:
+            elif espectros_area_libre:  # Verifica si la lista de espectros no está vacía antes de intentar graficar los espectros
                 for i, espectro in enumerate(espectros_area_libre):
                     # Crea una nueva ventana para el gráfico
                     crear_ventana_grafico()
@@ -834,9 +834,27 @@ def graficar_area_libre():
     else:
         messagebox.showerror("Error", "Dibuja al menos 3 puntos para formar un polígono.")
 
+def calcular_espectro(puntos):
+    # Convierte los puntos (x, y) en una ruta (path) para el polígono
+    ruta_poligono = mpath.Path(puntos)
+
+    # Crea una grilla de coordenadas
+    y_grid, x_grid = np.mgrid[0:datos_cubo.shape[1], 0:datos_cubo.shape[2]]
+    coords = np.column_stack((x_grid.ravel(), y_grid.ravel()))
+
+    # Usa la ruta del polígono para determinar qué píxeles están dentro del polígono
+    mascara = ruta_poligono.contains_points(coords).reshape(datos_cubo.shape[1], datos_cubo.shape[2])
+
+    # Calcula el espectro de los píxeles dentro del polígono
+    espectro = datos_cubo[:, mascara]
+
+    # Calcula el promedio del espectro por píxel dentro del área del polígono
+    espectro_promedio = np.mean(espectro, axis=1)
+
+    return espectro_promedio
 
 def conectar_puntos():
-    global puntos, lineas_figura, area_libre_activa
+    global puntos, lineas_figura, area_libre_activa, areas_libres, espectros_area_libre,puntos_dibujados
     # Asegúrate de usar la variable global lineas_figura
     if len(puntos) >= 2:
         # Conectar los puntos en orden
@@ -851,12 +869,27 @@ def conectar_puntos():
         x2, y2 = puntos[0]
         linea = ax.plot([x1, x2], [y1, y2], 'ro-')  # Conecta el último punto con el primer punto
         lineas_figura.append(linea[0])  # Agrega la línea a la lista
-        area_libre_activa = False  # Desactivar el área libre cuando los puntos se conecten
-        graficar_area_libre()
 
+        # Calcula el espectro del área libre
+        espectro = calcular_espectro(puntos)
+
+        # Almacena el espectro en la lista global
+        espectros_area_libre.append(espectro)
+
+        # Almacena la figura de área libre en la lista global
+        areas_libres.append((puntos_dibujados[:], lineas_figura[:]))  # Asegúrate de copiar las listas
+
+        # Limpia las listas para la próxima figura
+        puntos = []
+        puntos_dibujados = []
+        lineas_figura = []
         canvas.draw()
 
 
+def desactivar_area_libre():
+    global area_libre_activa
+    area_libre_activa = False  # Desactivar el área libre
+    conectar_puntos()  # Conectar los puntos cuando se desactiva el área libre
 # Función para activar/desactivar el modo de área libre
 def alternar_area_libre():
     global area_libre_activa, puntos
@@ -1037,7 +1070,7 @@ def cerrar_ventana_principal():
 
 
 def borrar_figuras():
-    global cuadrados_dibujados, ultima_elipse, ultimo_circulo, ultimo_punto, pixeles_dibujados, pixeles_seleccionados
+    global cuadrados_dibujados, ultima_elipse, ultimo_circulo, ultimo_punto, pixeles_dibujados, pixeles_seleccionados, areas_libres
 
     if circulo_activado:
         for circulo in circulos_dibujados:
@@ -1059,15 +1092,12 @@ def borrar_figuras():
     canvas.draw()
     # Limpia las líneas de la figura creada mediante la unión de puntos
     if area_libre_activa:
-        for linea in lineas_figura:
-            linea.remove()
-        lineas_figura.clear()  # Limpia la lista de líneas de la figura
-
-        # Limpia los puntos que se agregaron durante el dibujo del área libre
-        for punto in puntos_dibujados:
-            punto.remove()
-        puntos_dibujados.clear()  # Limpia la lista de puntos dibujados
-        puntos.clear()
+        for ultimos_puntos_dibujados, ultimas_lineas_figura in areas_libres:
+            for punto in ultimos_puntos_dibujados:
+                punto.remove()
+            for linea in ultimas_lineas_figura:
+                linea.remove()
+        areas_libres.clear()  # Limpia la lista de áreas libres
 
         # Limpia los espectros de las áreas libres
         espectros_area_libre.clear()
@@ -1114,23 +1144,16 @@ def borrar_ultima_figura():
             else:
                 ultimo_cuadrado = None  # Si no hay más cuadrados, establece el último_cuadrado a None
             canvas.draw()
-    # Limpia las líneas de la última figura creada mediante la unión de puntos
-    if lineas_figura:
-        ultima_linea = lineas_figura[-1]
-        ultima_linea.remove()
-        lineas_figura.pop()  # Elimina la última línea de la lista
-
-        # Limpia el último punto que se agregó durante el dibujo del área libre
-    if puntos_dibujados:
-        ultimo_punto = puntos_dibujados[-1]
-        ultimo_punto.remove()
-        puntos_dibujados.pop()  # Elimina el último punto de la lista
-        if puntos:  # Verifica si la lista de puntos no está vacía antes de intentar eliminar un punto
-            puntos.pop()  # Elimina las coordenadas del último punto de la lista
+    if area_libre_activa and areas_libres:
+        ultimos_puntos_dibujados, ultimas_lineas_figura = areas_libres.pop()  # Obtiene la última figura de área libre
+        for punto in ultimos_puntos_dibujados:
+            punto.remove()
+        for linea in ultimas_lineas_figura:
+            linea.remove()
 
         # Limpia el último espectro de las áreas libres
-    if espectros_area_libre:
-        espectros_area_libre.pop()  # Elimina el último espectro de la lista
+        if espectros_area_libre:
+            espectros_area_libre.pop()  # Elimina el último espectro de la lista
 
     canvas.draw()
 
