@@ -57,6 +57,10 @@ lineas_figura = []
 puntos_dibujados = []
 # Variable para rastrear si el área libre está activa
 lineas_grafico = []
+# Variables globales
+espectros_area_libre = []
+
+
 # Variables relacionadas con Matplotlib
 fig = None
 ax = None
@@ -475,6 +479,23 @@ def graficar(x=None, y=None, ancho=None, alto=None, angulo=None):
                             centro_x, centro_y, ancho, alto))
                     figura_grafico.canvas.draw()
                     ventanas_grafico.append(ventana_grafico)
+
+            elif area_libre_activa:
+                for i, espectro in enumerate(espectros_area_libre):
+                    # Crea una nueva ventana para el gráfico
+                    crear_ventana_grafico()
+                    ventana_grafico_abierta = True
+
+                    # Crea una nueva línea para el gráfico
+                    linea_grafico, = axes_grafico.plot(espectro, lw=2)
+
+                    # Establecer los límites de los ejes x e y
+                    axes_grafico.set_xlim(0, len(espectro) - 1)
+                    axes_grafico.set_ylim(np.min(espectro) - 0.0002, np.max(espectro))
+
+                    # Actualiza el título del gráfico con las coordenadas
+                    axes_grafico.set_title(f'Espectro del área libre {i + 1}')
+                    figura_grafico.canvas.draw()
         except ValueError:
             messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
 
@@ -789,7 +810,7 @@ def dibujar_pixel(event):
 
 
 def graficar_area_libre():
-    global puntos, ventana_grafico_abierta, linea_grafico
+    global puntos, ventana_grafico_abierta, linea_grafico, espectros_area_libre
     if len(puntos) >= 3:  # Necesitamos al menos 3 puntos para formar un polígono
         # Convierte los puntos (x, y) en una ruta (path) para el polígono
         ruta_polígono = mpath.Path(puntos)
@@ -807,21 +828,8 @@ def graficar_area_libre():
         # Calcula el promedio del espectro por píxel dentro del área del polígono
         espectro_promedio = np.mean(espectro, axis=1)
 
-        if not ventana_grafico_abierta:
-            crear_ventana_grafico()
-            linea_grafico, = axes_grafico.plot(espectro_promedio, lw=2)
-            axes_grafico.set_xlabel('Frame')
-            axes_grafico.set_ylabel('Intensidad')
-            ventana_grafico_abierta = True
-        else:
-            linea_grafico.set_ydata(espectro_promedio)
-
-        axes_grafico.set_xlim(0, len(espectro_promedio) - 1)
-        axes_grafico.set_ylim(np.min(espectro_promedio) - 0.0002, np.max(espectro_promedio))
-
-        axes_grafico.set_title(
-            f'Promedio del Espectro por píxel en el área del polígono (Puntos: {len(puntos)})')
-        figura_grafico.canvas.draw()
+        # Almacena el espectro en la lista global
+        espectros_area_libre.append(espectro_promedio)
     else:
         messagebox.showerror("Error", "Dibuja al menos 3 puntos para formar un polígono.")
 
@@ -1059,11 +1067,15 @@ def borrar_figuras():
     puntos_dibujados.clear()  # Limpia la lista de puntos dibujados
     puntos.clear()
 
+    # Limpia los espectros de las áreas libres
+    espectros_area_libre.clear()
+
     canvas.draw()
 
 
+
 def borrar_ultima_figura():
-    global circulos_dibujados, elipses_dibujadas, cuadrados_dibujados, ultima_elipse, ultimo_circulo, ultimo_cuadrado, pixeles_dibujados, pixeles_seleccionados
+    global circulos_dibujados, elipses_dibujadas, cuadrados_dibujados, ultima_elipse, ultimo_circulo, ultimo_cuadrado, pixeles_dibujados, pixeles_seleccionados, espectros_area_libre, lineas_figura, puntos, puntos_dibujados
 
     if circulo_activado:
         if circulos_dibujados:
@@ -1100,6 +1112,25 @@ def borrar_ultima_figura():
             else:
                 ultimo_cuadrado = None  # Si no hay más cuadrados, establece el último_cuadrado a None
             canvas.draw()
+    # Limpia las líneas de la última figura creada mediante la unión de puntos
+    if lineas_figura:
+        ultima_linea = lineas_figura[-1]
+        ultima_linea.remove()
+        lineas_figura.pop()  # Elimina la última línea de la lista
+
+        # Limpia el último punto que se agregó durante el dibujo del área libre
+    if puntos_dibujados:
+        ultimo_punto = puntos_dibujados[-1]
+        ultimo_punto.remove()
+        puntos_dibujados.pop()  # Elimina el último punto de la lista
+        if puntos:  # Verifica si la lista de puntos no está vacía antes de intentar eliminar un punto
+            puntos.pop()  # Elimina las coordenadas del último punto de la lista
+
+        # Limpia el último espectro de las áreas libres
+    if espectros_area_libre:
+        espectros_area_libre.pop()  # Elimina el último espectro de la lista
+
+    canvas.draw()
 
 
 def botones_actualizados():
