@@ -1531,10 +1531,6 @@ def cambiar_tipo_figura(event):
     elif seleccion == "Area Libre":
         area_activado = True
 
-    # Borrar figuras si se desactiva una opción de dibujo
-    if seleccion not in ["Circulo", "Elipse", "Pixel", "Cuadrado"]:
-        borrar_figuras()
-
     # Deshabilitar eventos relacionados con el movimiento si no está seleccionado
     if seleccion != "Movimiento":
         canvas.get_tk_widget().unbind("<ButtonPress-1>")
