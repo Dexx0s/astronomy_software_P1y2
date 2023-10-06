@@ -1112,16 +1112,16 @@ def borrar_figuras():
     cuadrados_dibujados.clear()  # Limpia la lista de cuadrados dibujados
 
     # Limpia las líneas de la figura creada mediante la unión de puntos
-    if area_libre_activa:
-        for ultimos_puntos_dibujados, ultimas_lineas_figura in areas_libres:
-            for punto in ultimos_puntos_dibujados:
-                punto.remove()
-            for linea in ultimas_lineas_figura:
-                linea.remove()
-        areas_libres.clear()  # Limpia la lista de áreas libres
 
-        # Limpia los espectros de las áreas libres
-        espectros_area_libre.clear()
+    for ultimos_puntos_dibujados, ultimas_lineas_figura in areas_libres:
+        for punto in ultimos_puntos_dibujados:
+            punto.remove()
+        for linea in ultimas_lineas_figura:
+            linea.remove()
+    areas_libres.clear()  # Limpia la lista de áreas libres
+
+    # Limpia los espectros de las áreas libres
+    espectros_area_libre.clear()
 
     canvas.draw()
 
