@@ -1090,24 +1090,27 @@ def cerrar_ventana_principal():
 def borrar_figuras():
     global cuadrados_dibujados, ultima_elipse, ultimo_circulo, ultimo_punto, pixeles_dibujados, pixeles_seleccionados, areas_libres
 
-    if circulo_activado:
-        for circulo in circulos_dibujados:
-            circulo.remove()
-        circulos_dibujados.clear()  # Limpia la lista de círculos dibujados
-    elif pixel_activado:
-        for pixel in pixeles_dibujados:
-            pixel.remove()
-        pixeles_dibujados.clear()  # Limpia la lista de píxeles dibujados
-        pixeles_seleccionados.clear()  # Limpia la lista de píxeles seleccionados
-    elif eclipse_activado:
-        for elipse in elipses_dibujadas:
-            elipse.remove()
-        elipses_dibujadas.clear()  # Limpia la lista de elipses dibujadas
-    elif cuadrado_activado:  # Agregar lógica para borrar cuadrados
-        for cuadrado in cuadrados_dibujados:
-            cuadrado.remove()
-        cuadrados_dibujados.clear()  # Limpia la lista de cuadrados dibujados
-    canvas.draw()
+    # Borrar círculos
+    for circulo in circulos_dibujados:
+        circulo.remove()
+    circulos_dibujados.clear()  # Limpia la lista de círculos dibujados
+
+    # Borrar píxeles
+    for pixel in pixeles_dibujados:
+        pixel.remove()
+    pixeles_dibujados.clear()  # Limpia la lista de píxeles dibujados
+    pixeles_seleccionados.clear()  # Limpia la lista de píxeles seleccionados
+
+    # Borrar elipses
+    for elipse in elipses_dibujadas:
+        elipse.remove()
+    elipses_dibujadas.clear()  # Limpia la lista de elipses dibujadas
+
+    # Borrar cuadrados
+    for cuadrado in cuadrados_dibujados:
+        cuadrado.remove()
+    cuadrados_dibujados.clear()  # Limpia la lista de cuadrados dibujados
+
     # Limpia las líneas de la figura creada mediante la unión de puntos
     if area_libre_activa:
         for ultimos_puntos_dibujados, ultimas_lineas_figura in areas_libres:
@@ -1120,7 +1123,7 @@ def borrar_figuras():
         # Limpia los espectros de las áreas libres
         espectros_area_libre.clear()
 
-        canvas.draw()
+    canvas.draw()
 
 
 
