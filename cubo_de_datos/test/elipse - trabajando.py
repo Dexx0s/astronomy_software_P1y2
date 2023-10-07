@@ -1263,46 +1263,96 @@ def botones_actualizados():
         boton_borrar_ultima_figura.config(state=tk.NORMAL)
 
 
+def menu_tamano(opcion):
+    global s_x, s_y
+    if opcion == "Equivalente":
+        s_x = s_y = t_escala.get()
+        tamano_figura(t_escala.get())
+    elif opcion == "Alto":
+        s_y = t_escala.get()
+        s_x = 1
+        tamano_figura(t_escala.get())
+    elif opcion == "Ancho":
+        s_x = t_escala.get()
+        s_y = 1
+        tamano_figura(t_escala.get())
+    # Establecer un límite al valor del control deslizante
+    t_escala.configure(from_=1, to=100, resolution=1)
+
 def tamano_figura(val):
     global lado, s_x, s_y, ultima_elipse, ultimo_circulo, ultimo_cuadrado, relacion_aspecto_original
     tamano = float(val)
-    if circulo_activado:
-        radio = float(val)
-        if ultimo_circulo is not None:
-            ultimo_circulo.set_radius(radio)
-    elif cuadrado_activado:  # Agregar lógica para cambiar el tamaño del cuadrado
-        lado = tamano
-        if ultimo_cuadrado is not None:
-            # Obtén las coordenadas actuales del centro del cuadrado
-            x_centro = ultimo_cuadrado.get_x() + ultimo_cuadrado.get_width() / 2
-            y_centro = ultimo_cuadrado.get_y() + ultimo_cuadrado.get_height() / 2
+    # Obtener el tipo de cambio de tamaño
+    opcion = menu_figura.get()
+    if opcion == "Equivalente":
+        if circulo_activado:
+            radio = float(val)
+            if ultimo_circulo is not None:
+                ultimo_circulo.set_radius(radio)
+        elif cuadrado_activado:  # Agregar lógica para cambiar el tamaño del cuadrado
+            lado = tamano
+            if ultimo_cuadrado is not None:
+                # Obtén las coordenadas actuales del centro del cuadrado
+                x_centro = ultimo_cuadrado.get_x() + ultimo_cuadrado.get_width() / 2
+                y_centro = ultimo_cuadrado.get_y() + ultimo_cuadrado.get_height() / 2
 
-            # Establece el nuevo ancho y alto
-            ultimo_cuadrado.set_width(lado)
-            ultimo_cuadrado.set_height(lado)
+                # Establece el nuevo ancho y alto
+                ultimo_cuadrado.set_width(lado)
+                ultimo_cuadrado.set_height(lado)
 
-            # Recalcula las coordenadas de la esquina superior izquierda basándote en el centro
-            ultimo_cuadrado.set_x(x_centro - lado / 2)
-            ultimo_cuadrado.set_y(y_centro - lado / 2)
+                # Recalcula las coordenadas de la esquina superior izquierda basándote en el centro
+                ultimo_cuadrado.set_x(x_centro - lado / 2)
+                ultimo_cuadrado.set_y(y_centro - lado / 2)
+        elif eclipse_activado:
+            if ultima_elipse is not None:
+                # Obtén la relación de aspecto original de la elipse
+                relacion_aspecto = ancho_elipse / alto_elipse
+                # Establece el nuevo tamaño de la elipse
+                ultima_elipse.set_width(tamano * relacion_aspecto)
+                ultima_elipse.set_height(tamano)
+        canvas.draw()
+    elif opcion == "Alto":
+        if circulo_activado:
+            radio = tamano
+            if ultimo_circulo is not None:
+                ultimo_circulo.set_radius(radio)
+        elif cuadrado_activado:
+            lado = tamano
+            if ultimo_cuadrado is not None:
+                # Establece el nuevo alto
+                ultimo_cuadrado.set_height(tamano)
+                # Calcula el nuevo ancho
+                lado = tamano * ultimo_cuadrado.get_width() / ultimo_cuadrado.get_height()
+                # Establece el nuevo ancho
+                ultimo_cuadrado.set_width(lado)
 
-    canvas.draw()
+        elif eclipse_activado:
+            if ultima_elipse is not None:
+                # Establece el nuevo alto
+                ultima_elipse.set_height(tamano)
+        canvas.draw()
 
+    elif opcion == "Ancho":
+        if circulo_activado:
+            radio = tamano
+            if ultimo_circulo is not None:
+                ultimo_circulo.set_radius(radio)
 
+        elif cuadrado_activado:
+            lado = tamano
+            if ultimo_cuadrado is not None:
+                # Establece el nuevo ancho
+                ultimo_cuadrado.set_width(tamano)
 
-def tamano_eclipse(val):
-    global ultima_elipse
-    # Obtiene los valores de las barras de desplazamiento de la elipse
-    an = elipse_ancho.get()
-    al = elipse_alto.get()
-    # Obtiene el valor de la barra de desplazamiento de rotación
-    rotacion = rotacion_elipse.get()
-    if eclipse_activado:
-        if ultima_elipse is not None:
-            # Ajusta el ancho y alto de la elipse
-            ultima_elipse.set_width(an)
-            ultima_elipse.set_height(al)
-            # Ajusta la rotación de la elipse
-            ultima_elipse.angle = rotacion
+                # Establece el nuevo alto
+                ultimo_cuadrado.set_height(lado / tamano * ultimo_cuadrado.get_height())
+
+        elif eclipse_activado:
+            if ultima_elipse is not None:
+                # Obtén la relación de aspecto original de la elipse
+                relacion_aspecto = ancho_elipse / alto_elipse
+                # Establece el nuevo tamaño de la elipse
+                ultima_elipse.set_width(tamano * relacion_aspecto)
         canvas.draw()
 
 
@@ -1558,25 +1608,24 @@ canvas.mpl_connect('button_release_event', on_release)
 
 
 # Crear un control deslizante para cambiar el tamaño de la figura (círculo o elipse)
-tamano_scale = Scale(ventana, from_=1, to=100, orient="horizontal", label="Tamaño de la Figura", command=tamano_figura,
-                     width=20)
-tamano_scale.grid(row=3, column=8, padx=5, pady=10)  # Ajusta la ubicación del control deslizante
+# tamano_scale = Scale(ventana, from_=1, to=100, orient="horizontal", label="Tamaño de la Figura", command=tamano_figura,width=20)
+# tamano_scale.grid(row=3, column=8, padx=5, pady=10)  # Ajusta la ubicación del control deslizante
 
 # Crea los controles deslizantes para ancho, alto y rotación de la elipse
 # Coloca los controles deslizantes en la ventana packs
-elipse_ancho = tk.Scale(ventana, from_=1, to=100, orient="horizontal", label="Ancho Elipse")
-elipse_ancho.grid(row=4, column=5, padx=5, pady=10)
-elipse_alto = tk.Scale(ventana, from_=1, to=100, orient="horizontal", label="Alto Elipse")
-elipse_alto.grid(row=4, column=6, padx=5, pady=10)
-rotacion_elipse = tk.Scale(ventana, from_=0, to=180, orient="horizontal", label="Rotación Elipse")
-rotacion_elipse.grid(row=4, column=7, padx=5, pady=10)
+# elipse_ancho = tk.Scale(ventana, from_=1, to=100, orient="horizontal", label="Ancho Elipse")
+# elipse_ancho.grid(row=4, column=5, padx=5, pady=10)
+# elipse_alto = tk.Scale(ventana, from_=1, to=100, orient="horizontal", label="Alto Elipse")
+# elipse_alto.grid(row=4, column=6, padx=5, pady=10)
+# rotacion_elipse = tk.Scale(ventana, from_=0, to=180, orient="horizontal", label="Rotación Elipse")
+# rotacion_elipse.grid(row=4, column=7, padx=5, pady=10)
 # Configura las barras de desplazamiento para llamar a las funciones adecuadas cuando cambien los valores
-elipse_ancho.config(command=tamano_eclipse)
-elipse_alto.config(command=tamano_eclipse)
-rotacion_elipse.config(command=tamano_eclipse)
+# elipse_ancho.config(command=tamano_eclipse)
+# elipse_alto.config(command=tamano_eclipse)
+# rotacion_elipse.config(command=tamano_eclipse)
 
 
-###combobox selector
+# combobox selector
 def cambiar_tipo_figura(event):
     global movimiento_activado, pixel_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado
     seleccion = combooptions.get()
@@ -1615,6 +1664,19 @@ def cambiar_tipo_figura(event):
 
 # Enlazar la función cambiar_tipo_figura al ComboBox
 combooptions.bind("<<ComboboxSelected>>", cambiar_tipo_figura)
-
 configurar_menu()
+# Menu Tamaño Figura
+menu_figura_text = tk.Label(ventana, text="Tamaño figura:")
+menu_figura_text.grid(row=0, column=4, padx=5, pady=5)
+menu_figura = ttk.Combobox(ventana, values=["Equivalente", "Alto", "Ancho"])
+menu_figura.grid(row=0, column=5, padx=5, pady=5)
+menu_figura.configure(state="readonly")
+menu_figura.current(0)
+# Configurar el combobox para llamar a la función adecuada cuando cambie el valor
+menu_figura.bind("<<ComboboxSelected>>", lambda e: menu_tamano(menu_figura.get()))
+# Crear un control deslizante para cambiar el tamaño de las figuras
+t_escala = tk.Label(ventana, text = "Escala:")
+t_escala.grid(row=0, column=6, padx=5, pady=5)
+t_escala = Scale(ventana, from_=1, to=100, orient="horizontal", command=tamano_figura,width=20)
+t_escala.grid(row=0, column=7, padx=5, pady=3)
 ventana.mainloop()
