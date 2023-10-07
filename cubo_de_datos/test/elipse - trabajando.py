@@ -40,9 +40,15 @@ ventana_grafico_abierta = False
 last_mouse_x = 0
 last_mouse_y = 0
 movimiento_activado = False  # Variable para rastrear el estado del movimiento
+
+pixel_seleccionado = None  # Variable para el pixel seleccionado
+
 pixel_activado = False  # Variable para rastrear el estado de la opción "Pixel"
+
 circulo_activado = False  # Variable para rastrear el estado de la opción "Círculo"
+
 eclipse_activado = False  # Variable para rastrear el estado del movimiento
+
 cuadrado_activado = False  # Variable para rastrear el estado de la opción "Pixel"
 area_activado = False  # Variable para rastrear el estado de la opción "Círculo"
 ultimo_clic = None
@@ -61,6 +67,8 @@ lineas_grafico = []
 espectros_area_libre = []
 # Variables globales
 areas_libres = []
+area_libre_seleccionada = None  # Variable para el área libre seleccionada
+
 
 # Variables relacionadas con Matplotlib
 fig = None
@@ -69,6 +77,8 @@ canvas = None
 linea_grafico = None
 barra_desplazamiento = None
 circulos_dibujados = []  # Lista para almacenar los círculos dibujados
+circulo_seleccionado = None  # Variable para el círculo seleccionado
+
 radio_scale = None  # Variable para el scrollbar del radio del círculo
 radio = 5  # Valor predeterminado del radio del círculo
 ultimo_circulo = None  # Variable para el último círculo dibujado
@@ -77,6 +87,9 @@ ultimo_circulo = None  # Variable para el último círculo dibujado
 ultima_elipse = None
 elipses_dibujadas = []  # Lista para almacenar los círculos dibujados
 dibujando_elipse = False
+elipse_seleccionada = None  # Variable para la elipse seleccionada
+
+
 # Variables para el circulo
 centro_x, centro_y = None, None
 dibujando_circulo = False
@@ -86,6 +99,10 @@ circulo_dibujado = None
 cuadrados_dibujados = []  # Lista para almacenar los cuadrados dibujados
 ultimo_cuadrado = None  # Variable para mantener un seguimiento del último cuadrado dibujado
 dibujando_cuadrado = False
+cuadrado_seleccionado = None
+cuadrados_visibles = []  # Lista para almacenar los cuadrados visibles
+cuadrados_invisibles = []  # Lista para almacenar los cuadrados invisibles
+
 # Variables para el pixel
 ultimo_punto = None
 pixeles_seleccionados = []
@@ -794,6 +811,52 @@ def dibujar_cuadrado(event):
 
     canvas.draw()
 
+def on_press(event):
+    global cuadrado_seleccionado, circulo_seleccionado, elipse_seleccionada, pixel_seleccionado
+    if event.inaxes is None: return
+    for cuadrado in cuadrados_dibujados:
+        if cuadrado.contains(event)[0]:
+            cuadrado_seleccionado = cuadrado
+            return
+    for circulo in circulos_dibujados:
+        if circulo.contains(event)[0]:
+            circulo_seleccionado = circulo
+            return
+    for elipse in elipses_dibujadas:
+        if elipse.contains(event)[0]:
+            elipse_seleccionada = elipse
+            return
+    for pixel in pixeles_dibujados:
+        if pixel.contains(event)[0]:
+            pixel_seleccionado = pixel
+            return
+
+def on_motion(event):
+    global cuadrado_seleccionado, circulo_seleccionado, elipse_seleccionada, pixel_seleccionado
+    if event.inaxes is None: return
+    if event.button != 1: return
+    x, y = event.xdata, event.ydata
+    if cuadrado_seleccionado is not None:
+        lado = 10  # El tamaño del cuadrado
+        cuadrado_seleccionado.set_xy((x - lado / 2, y - lado / 2))
+    elif circulo_seleccionado is not None:
+        radio = 5  # El tamaño del círculo
+        circulo_seleccionado.center = x, y
+    elif elipse_seleccionada is not None:
+        ancho = 20  # El ancho de la elipse
+        alto = 10   # El alto de la elipse
+        elipse_seleccionada.center = x, y
+    elif pixel_seleccionado is not None:
+        tamaño_punto = 4  # El tamaño del punto
+        pixel_seleccionado.set_offsets([x, y])
+    canvas.draw()
+
+def on_release(event):
+    global cuadrado_seleccionado, circulo_seleccionado, elipse_seleccionada, pixel_seleccionado
+    cuadrado_seleccionado = None
+    circulo_seleccionado = None
+    elipse_seleccionada = None
+    pixel_seleccionado = None
 
 # Función para dibujar un círculo en el subplot de Matplotlib
 def dibujar_circulo(event):
@@ -1158,8 +1221,14 @@ def borrar_ultima_figura():
             canvas.draw()
     elif cuadrado_activado:  # Agregar lógica para borrar cuadrados
         if cuadrados_dibujados:
-            ultimo_cuadrado.remove()
-            cuadrados_dibujados.pop()  # Elimina el último cuadrado de la lista
+            # Elimina el último cuadrado visible
+            if ultimo_cuadrado in cuadrados_dibujados:
+                ultimo_cuadrado.remove()
+                cuadrados_dibujados.remove(ultimo_cuadrado)
+            # Elimina el último cuadrado invisible
+            if ultimo_cuadrado in cuadrados_dibujados:
+                ultimo_cuadrado.remove()
+                cuadrados_dibujados.remove(ultimo_cuadrado)
             if cuadrados_dibujados:  # Si todavía hay cuadrados en la lista, actualiza el último cuadrado
                 ultimo_cuadrado = cuadrados_dibujados[-1]
             else:
@@ -1481,6 +1550,12 @@ canvas.mpl_connect('button_press_event', dibujar_elipse)
 canvas.mpl_connect('button_press_event', dibujar_cuadrado)
 
 canvas.mpl_connect('button_press_event', dibujar_pixel)
+
+# Conecta los eventos con las funciones correspondientes
+canvas.mpl_connect('button_press_event', on_press)
+canvas.mpl_connect('motion_notify_event', on_motion)
+canvas.mpl_connect('button_release_event', on_release)
+
 
 # Crear un control deslizante para cambiar el tamaño de la figura (círculo o elipse)
 tamano_scale = Scale(ventana, from_=1, to=100, orient="horizontal", label="Tamaño de la Figura", command=tamano_figura,
