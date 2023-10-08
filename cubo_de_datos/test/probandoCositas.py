@@ -233,11 +233,13 @@ def guardar_coordenadas_en_mongodb():
     if nombre_mascara is not None and nombre_mascara.strip() != "":
         # Insertar las coordenadas en la colección con el nombre proporcionado
         data = {"nombre": nombre_mascara, "coordenadas": puntos_area_libre}
-        print(data)
         mask_collection.insert_one(data)
-        puntos_area_libre = []  # Limpia la lista de puntos
+        puntos_area_libre.clear()  # Vacía la lista de puntos
+        # Mostrar un mensaje de guardado exitoso
+        messagebox.showinfo("Guardado", f"Coordenadas de la máscara '{nombre_mascara}' guardadas correctamente.")
     else:
         messagebox.showerror("Error", "Debes ingresar un nombre para la máscara.")
+
 
 def guardar_grafico(cuadro_comentarios):
     global figura_grafico  # Asegúrate de que la figura sea global y accesible aquí
