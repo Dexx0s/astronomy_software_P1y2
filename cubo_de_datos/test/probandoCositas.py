@@ -1516,9 +1516,12 @@ def ver_mascaras():
             for nombre, mascara in lista_mascaras:
                 if nombre == nombre_seleccionado:
                     coordenadas = mascara.get("coordenadas", [])
+                    puntos.extend(coordenadas)  # Agrega las coordenadas a la lista de puntos
+                    conectar_puntos()  # Conecta los puntos y calcula el espectro
+                    area_libre_activa = True  # Habilita el modo de área libre
+                    boton_area_libre.config(text="Desactivar Área Libre")
                     messagebox.showinfo("Coordenadas de la Máscara",
                                         f"Coordenadas de la máscara '{nombre}': {coordenadas}")
-                    dibujar_puntos_mascara(coordenadas, ax, canvas)  # Dibuja las coordenadas en la ventana principal
 
     # Crea un botón para obtener las coordenadas de la máscara seleccionada
     boton_obtener_coordenadas = tk.Button(ventana_mascaras, text="Obtener Coordenadas", command=obtener_coordenadas_seleccionada)
