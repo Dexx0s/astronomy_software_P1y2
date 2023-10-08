@@ -69,6 +69,7 @@ espectros_area_libre = []
 areas_libres = []
 area_libre_seleccionada = None  # Variable para el área libre seleccionada
 
+figuras_dibujadas = []
 
 # Variables relacionadas con Matplotlib
 fig = None
@@ -778,7 +779,7 @@ def on_image_click(event):
 
 # Funcion para dibujar una elipse
 def dibujar_elipse(event):
-    global eclipse_activado, ultima_elipse
+    global eclipse_activado, ultima_elipse, figuras_dibujadas
     # Graficar
     global centro_x, centro_y, ancho_elipse, alto_elipse, angulo_elipse
     if eclipse_activado and event.xdata is not None and event.ydata is not None:
@@ -789,6 +790,7 @@ def dibujar_elipse(event):
         ax.add_patch(elipse)
         elipses_dibujadas.append(elipse)
         ultima_elipse = elipse
+        figuras_dibujadas.append(('elipse', elipse))  # Añade la elipse a la lista de figuras dibujadas
 
         # Para el grafico
         centro_x, centro_y = elipse.center
@@ -799,7 +801,7 @@ def dibujar_elipse(event):
 
 
 def dibujar_cuadrado(event):
-    global cuadrado_activado, ultimo_cuadrado
+    global cuadrado_activado, ultimo_cuadrado, figuras_dibujadas
 
     if cuadrado_activado and event.xdata is not None and event.ydata is not None:
         x, y = event.xdata, event.ydata
@@ -808,6 +810,7 @@ def dibujar_cuadrado(event):
         ax.add_patch(cuadrado)
         cuadrados_dibujados.append(cuadrado)  # Agrega el cuadrado a la lista de cuadrados dibujados
         ultimo_cuadrado = cuadrado  # Actualiza el último cuadrado dibujado
+        figuras_dibujadas.append(('cuadrado', cuadrado))  # Añade el cuadrado a la lista de figuras dibujadas
 
     canvas.draw()
 
@@ -860,7 +863,7 @@ def on_release(event):
 
 # Función para dibujar un círculo en el subplot de Matplotlib
 def dibujar_circulo(event):
-    global radio, ultimo_circulo
+    global radio, ultimo_circulo, figuras_dibujadas
 
     if circulo_activado and event.xdata is not None and event.ydata is not None:
         x, y = event.xdata, event.ydata
@@ -869,14 +872,18 @@ def dibujar_circulo(event):
         ax.add_patch(circulo)
         circulos_dibujados.append(circulo)  # Agrega el círculo a la lista de círculos dibujados
         ultimo_circulo = circulo  # Actualiza el último círculo dibujado
+        figuras_dibujadas.append(('circulo', circulo))  # Añade el círculo a la lista de figuras dibujadas
+
         # Parametros para la funcion graficar
         centro_x, centro_y = circulo.center
         radio_circulo = circulo.radius
     canvas.draw()
 
 
+
 def dibujar_pixel(event):
-    global pixel_activado, ultimo_punto, pixeles_seleccionados, pixeles_dibujados
+    global pixel_activado, ultimo_punto, pixeles_seleccionados, pixeles_dibujados, figuras_dibujadas
+
     if pixel_activado and event.xdata is not None and event.ydata is not None:
         x, y = event.xdata, event.ydata
         print(f"x: {x}, y: {y}")  # Agrega esta línea para imprimir las coordenadas
@@ -885,8 +892,11 @@ def dibujar_pixel(event):
         pixel = ax.scatter(x, y, color='red', s=tamaño_punto)
         pixeles_dibujados.append(pixel)
         ultimo_punto = pixel
+        figuras_dibujadas.append(('pixel', (pixel, (x, y))))  # Añade el pixel y sus coordenadas a la lista de figuras dibujadas
+
         # Agrega las coordenadas del pixel a la lista de pixeles seleccionados
         pixeles_seleccionados.append((x, y))
+
         # Actualiza la gráfica
         canvas.draw()
 
@@ -960,11 +970,13 @@ def conectar_puntos():
         # Almacena la figura de área libre en la lista global
         areas_libres.append((puntos_dibujados[:], lineas_figura[:]))  # Asegúrate de copiar las listas
 
+        figuras_dibujadas.append(('area_libre', (puntos_dibujados[:], lineas_figura[:])))  # Añade el área libre a la lista de figuras dibujadas
+
         # Limpia las listas para la próxima figura
         puntos = []
         puntos_dibujados = []
         lineas_figura = []
-        canvas.draw()
+    canvas.draw()
 
 
 def desactivar_area_libre():
@@ -1191,61 +1203,41 @@ def borrar_figuras():
 
 
 def borrar_ultima_figura():
-    global circulos_dibujados, elipses_dibujadas, cuadrados_dibujados, ultima_elipse, ultimo_circulo, ultimo_cuadrado, pixeles_dibujados, pixeles_seleccionados, espectros_area_libre, lineas_figura, puntos, puntos_dibujados
-
-    if circulo_activado:
-        if circulos_dibujados:
-            ultimo_circulo.remove()
-            circulos_dibujados.pop()  # Elimina el último círculo de la lista
-            if circulos_dibujados:  # Si todavía hay círculos en la lista, actualiza el último círculo
-                ultimo_circulo = circulos_dibujados[-1]
-            else:
-                ultimo_circulo = None  # Si no hay más círculos, establece el último_círculo a None
-            canvas.draw()
-    elif pixel_activado:
-        if pixel_activado:
-            if pixeles_dibujados:
-                ultimo_pixel = pixeles_dibujados[-1]
-                ultimo_pixel.remove()
-                pixeles_dibujados.pop()  # Elimina el último pixel de la lista
-                pixeles_seleccionados.pop()  # Elimina las coordenadas del último pixel de la lista
-                canvas.draw()  # Actualiza la gráfica
-    elif eclipse_activado:
-        if elipses_dibujadas:
-            ultima_elipse.remove()
-            elipses_dibujadas.pop()  # Elimina la última elipse de la lista
-            if elipses_dibujadas:  # Si todavía hay elipses en la lista, actualiza la última elipse
-                ultima_elipse = elipses_dibujadas[-1]
-            else:
-                ultima_elipse = None  # Si no hay más elipses, establece la última_elipse a None
-            canvas.draw()
-    elif cuadrado_activado:  # Agregar lógica para borrar cuadrados
-        if cuadrados_dibujados:
-            # Elimina el último cuadrado visible
-            if ultimo_cuadrado in cuadrados_dibujados:
-                ultimo_cuadrado.remove()
-                cuadrados_dibujados.remove(ultimo_cuadrado)
-            # Elimina el último cuadrado invisible
-            if ultimo_cuadrado in cuadrados_dibujados:
-                ultimo_cuadrado.remove()
-                cuadrados_dibujados.remove(ultimo_cuadrado)
-            if cuadrados_dibujados:  # Si todavía hay cuadrados en la lista, actualiza el último cuadrado
-                ultimo_cuadrado = cuadrados_dibujados[-1]
-            else:
-                ultimo_cuadrado = None  # Si no hay más cuadrados, establece el último_cuadrado a None
-            canvas.draw()
-    if area_libre_activa and areas_libres:
-        ultimos_puntos_dibujados, ultimas_lineas_figura = areas_libres.pop()  # Obtiene la última figura de área libre
-        for punto in ultimos_puntos_dibujados:
-            punto.remove()
-        for linea in ultimas_lineas_figura:
-            linea.remove()
-
-        # Limpia el último espectro de las áreas libres
-        if espectros_area_libre:
-            espectros_area_libre.pop()  # Elimina el último espectro de la lista
-
-    canvas.draw()
+    global ultimo_circulo, ultimo_cuadrado, ultima_elipse, ultimo_punto
+    if figuras_dibujadas:
+        tipo_figura, ultima_figura = figuras_dibujadas.pop()
+        if tipo_figura == 'pixel':
+            pixel, coords = ultima_figura
+            pixel.remove()
+            pixeles_dibujados.remove(pixel)
+            pixeles_seleccionados.remove(coords)
+            # Actualiza ultimo_punto para referirse al siguiente pixel más reciente
+            ultimo_punto = pixeles_dibujados[-1] if pixeles_dibujados else None
+        elif tipo_figura == 'circulo':
+            ultima_figura.remove()
+            circulos_dibujados.remove(ultima_figura)
+            # Actualiza ultimo_circulo para referirse al siguiente círculo más reciente
+            ultimo_circulo = circulos_dibujados[-1] if circulos_dibujados else None
+        elif tipo_figura == 'elipse':
+            ultima_figura.remove()
+            elipses_dibujadas.remove(ultima_figura)
+            # Actualiza ultima_elipse para referirse a la siguiente elipse más reciente
+            ultima_elipse = elipses_dibujadas[-1] if elipses_dibujadas else None
+        elif tipo_figura == 'cuadrado':
+            ultima_figura.remove()
+            cuadrados_dibujados.remove(ultima_figura)
+            # Actualiza ultimo_cuadrado para referirse al siguiente cuadrado más reciente
+            ultimo_cuadrado = cuadrados_dibujados[-1] if cuadrados_dibujados else None
+        elif tipo_figura == 'area_libre':
+            ultimos_puntos_dibujados, ultimas_lineas_figura = ultima_figura
+            for punto in ultimos_puntos_dibujados:
+                punto.remove()
+            for linea in ultimas_lineas_figura:
+                linea.remove()
+            areas_libres.remove(ultima_figura)
+            if espectros_area_libre:
+                espectros_area_libre.pop()
+        canvas.draw()
 
 
 def botones_actualizados():
@@ -1354,7 +1346,6 @@ def tamano_figura(val):
                 # Establece el nuevo tamaño de la elipse
                 ultima_elipse.set_width(tamano * relacion_aspecto)
         canvas.draw()
-
 
 def mostrar_encabezado():
     global hdul
