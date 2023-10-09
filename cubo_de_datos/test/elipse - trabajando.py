@@ -61,6 +61,8 @@ area_libre_activa = False
 puntos = []
 lineas_figura = []
 puntos_dibujados = []
+puntos_area_libre = []
+coordenadas_mascara_seleccionada = []
 # Variable para rastrear si el área libre está activa
 lineas_grafico = []
 # Variables globales
@@ -70,6 +72,8 @@ areas_libres = []
 area_libre_seleccionada = None  # Variable para el área libre seleccionada
 
 figuras_dibujadas = []
+# Añade una nueva lista global para las figuras de las máscaras
+mascaras_dibujadas = []
 
 # Variables relacionadas con Matplotlib
 fig = None
@@ -90,7 +94,6 @@ elipses_dibujadas = []  # Lista para almacenar los círculos dibujados
 dibujando_elipse = False
 elipse_seleccionada = None  # Variable para la elipse seleccionada
 
-
 # Variables para el circulo
 centro_x, centro_y = None, None
 dibujando_circulo = False
@@ -109,18 +112,18 @@ ultimo_punto = None
 pixeles_seleccionados = []
 pixeles_dibujados = []
 
-switch_pymongo=0
-if switch_pymongo:
-    cliente = pymongo.MongoClient("mongodb://localhost:27017/")
-    base_datos = cliente["Astronomy"]
-    # File_collection
-    file_collection = base_datos["File_collection"]
-    # Data_collection
-    data_collection = base_datos["Data_collection"]
-    # Graphics
-    graphics_collection = base_datos["Graphics"]
-    # Mascaras de area libre guardadas
-    mask_collection = base_datos["masks"]
+# switch_pymongo=0
+# if switch_pymongo:
+cliente = pymongo.MongoClient("mongodb://localhost:27017/")
+base_datos = cliente["Astronomy3"]
+# File_collection
+file_collection = base_datos["File_collection"]
+# Data_collection
+data_collection = base_datos["Data_collection"]
+# Graphics
+graphics_collection = base_datos["Graphics"]
+# Mascaras de area libre guardadas
+mask_collection = base_datos["masks"]
 
 ventanas_grafico = []
 
@@ -214,11 +217,30 @@ def crear_ventana_grafico():
     boton_guardar = tk.Button(ventana_grafico, text="Guardar", command=lambda: guardar_grafico(cuadro_comentarios))
     boton_guardar.grid(row=0, column=1, padx=10, pady=10)  # Ubica el botón en la misma fila y columna 1 al lado derecho
 
+    boton_guardar_mascara = tk.Button(ventana_grafico, text="Guardar mascara", command=lambda: guardar_coordenadas_en_mongodb())
+    boton_guardar_mascara.grid(row=0, column=2, padx=10, pady=10)  # Ubica el botón en la misma fila y columna 1 al lado derecho
+
     ventana_grafico.button_salir = tk.Button(ventana_grafico, text="Salir", command=ventana_grafico.destroy)
     ventana_grafico.button_salir.grid(row=2, column=0,
                                       columnspan=2)  # Ubica el botón de salir en la fila 2 y columnas 0 y 1
 
     ventanas_grafico.append(ventana_grafico)
+
+def guardar_coordenadas_en_mongodb():
+    global puntos_area_libre, mask_collection
+
+    # Utiliza un cuadro de diálogo para pedir el nombre de la máscara
+    nombre_mascara = simpledialog.askstring("Nombre de la Máscara", "Ingresa un nombre para la máscara:")
+
+    if nombre_mascara is not None and nombre_mascara.strip() != "":
+        # Insertar las coordenadas en la colección con el nombre proporcionado
+        data = {"nombre": nombre_mascara, "coordenadas": puntos_area_libre}
+        mask_collection.insert_one(data)
+        puntos_area_libre.clear()  # Vacía la lista de puntos
+        # Mostrar un mensaje de guardado exitoso
+        messagebox.showinfo("Guardado", f"Coordenadas de la máscara '{nombre_mascara}' guardadas correctamente.")
+    else:
+        messagebox.showerror("Error", "Debes ingresar un nombre para la máscara.")
 
 
 def guardar_grafico(cuadro_comentarios):
@@ -322,14 +344,14 @@ def abrir_archivo():
             for ext in hdul:
                 if ext.name in ["PRIMARY", "IMAGE", "DATA CUBE", "SPECTRUM", "STANDARD"]:
                     extension_valida = ext
-                    #print(extension_valida)
+                    # print(extension_valida)
                     # remueve dimensiones innecesarias (por ejemplo,
                     # para datos de ALMA) si las hubiese
-                    extension_valida.data=extension_valida.data.squeeze()
-                    
+                    extension_valida.data = extension_valida.data.squeeze()
+
                     # Con esto buscamos la extension buscada, para abrir solo estas.
                     break
-            
+
                 if extension_valida is None:
                     raise ValueError("No es posible abrir este tipo de archivo FITS, dado que no contiene imágenes.")
 
@@ -339,20 +361,19 @@ def abrir_archivo():
             # if np.any(np.isnan(extension_valida.data)) or np.any(np.isinf(extension_valida.data)):
             #     respuesta = messagebox.askquestion("Datos Inválidos",
             #                                        "El archivo FITS contiene datos inválidos (NaN o infinitos). ¿Desea convertirlos a 0?")
-                
+
             #     if respuesta == 'yes':
             #         data = remove_nans(extension_valida)
             #         print("nans sacados")
 
             header = extension_valida.header
             # Imprimir el encabezado para ver la información
-            print(header) 
-            
+            print(header)
+
             datos_cubo = extension_valida.data
             tipo_extension = extension_valida.name
             fecha_actual = datetime.now()
 
-            
             num_frames, num_rows, num_columns = datos_cubo.shape
             print("ACA")
 
@@ -368,29 +389,27 @@ def abrir_archivo():
             actualizar_etiqueta_coordenadas()  # Agregado para actualizar coordenadas al cargar el archivo
             actualizar_barra_desplazamiento()
 
-            if switch_pymongo:
-                # Base de datos = File_Collection
-                file_info = {
-                    "Data_id": data_id,  # Identificador
-                    "File_name": nombre_archivo,  # File
-                    "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
-                    "Hora": fecha_actual.strftime("%H:%M:%S")  # Fecha segun Hora
-                }
-                file_collection.insert_one(file_info)
-                
-                # Base de datos = Data_Collection
-                data_info = {
-                    "Data_id": data_id,  # Identificador
-                    "Filename": nombre_archivo,  # File
-                    "Header": tipo_extension,  # Encabezado
-                    "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
-                    "Hora": fecha_actual.strftime("%H:%M:%S"),  # Fecha segun Hora
-                    "Data": str(datos_cubo)  # Datos
-                }
-                data_collection.insert_one(data_info)
+            # if switch_pymongo:
+            # Base de datos = File_Collection
+            file_info = {
+                "Data_id": data_id,  # Identificador
+                "File_name": nombre_archivo,  # File
+                "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
+                "Hora": fecha_actual.strftime("%H:%M:%S")  # Fecha segun Hora
+            }
+            file_collection.insert_one(file_info)
 
+            # Base de datos = Data_Collection
+            data_info = {
+                "Data_id": data_id,  # Identificador
+                "Filename": nombre_archivo,  # File
+                "Header": tipo_extension,  # Encabezado
+                "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
+                "Hora": fecha_actual.strftime("%H:%M:%S"),  # Fecha segun Hora
+                "Data": str(datos_cubo)  # Datos
+            }
+            data_collection.insert_one(data_info)
 
-            
             actualizar_estado_menu()
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo abrir el archivo FITS: {str(e)}")
@@ -536,6 +555,7 @@ def graficar(x=None, y=None, ancho=None, alto=None, angulo=None):
         except ValueError:
             messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
 
+
 def comparar_graficos(x=None, y=None, ancho=None, alto=None, angulo=None):
     global circulos_dibujados, cuadrados_dibujados, elipses_dibujadas, datos_cubo, figura_grafico, axes_grafico, ventana_grafico_abierta, linea_grafico
     global ventana_grafico, ventanas_grafico
@@ -642,6 +662,7 @@ def comparar_graficos(x=None, y=None, ancho=None, alto=None, angulo=None):
                 figura_grafico.canvas.draw()
         except ValueError:
             messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
+
 
 def graficar_coordenadas():
     global datos_cubo, pixeles_seleccionados, pixeles_dibujados
@@ -777,6 +798,7 @@ def on_image_click(event):
                         # Restablece las variables del cuadrado después de dibujarlo
                         centro_x, centro_y, lado = None, None, None
 
+
 # Funcion para dibujar una elipse
 def dibujar_elipse(event):
     global eclipse_activado, ultima_elipse, figuras_dibujadas
@@ -786,7 +808,7 @@ def dibujar_elipse(event):
         x, y = event.xdata, event.ydata
         ancho = 20
         alto = 10
-        elipse = Ellipse((x, y), width=ancho, height=alto, angle=0,color=(0/255, 255/255, 255/255), fill=False)
+        elipse = Ellipse((x, y), width=ancho, height=alto, angle=0, color=(0 / 255, 255 / 255, 255 / 255), fill=False)
         ax.add_patch(elipse)
         elipses_dibujadas.append(elipse)
         ultima_elipse = elipse
@@ -814,6 +836,7 @@ def dibujar_cuadrado(event):
 
     canvas.draw()
 
+
 def on_press(event):
     global cuadrado_seleccionado, circulo_seleccionado, elipse_seleccionada, pixel_seleccionado
     if event.inaxes is None: return
@@ -834,6 +857,7 @@ def on_press(event):
             pixel_seleccionado = pixel
             return
 
+
 def on_motion(event):
     global cuadrado_seleccionado, circulo_seleccionado, elipse_seleccionada, pixel_seleccionado
     if event.inaxes is None: return
@@ -847,12 +871,13 @@ def on_motion(event):
         circulo_seleccionado.center = x, y
     elif elipse_seleccionada is not None:
         ancho = 20  # El ancho de la elipse
-        alto = 10   # El alto de la elipse
+        alto = 10  # El alto de la elipse
         elipse_seleccionada.center = x, y
     elif pixel_seleccionado is not None:
         tamaño_punto = 4  # El tamaño del punto
         pixel_seleccionado.set_offsets([x, y])
     canvas.draw()
+
 
 def on_release(event):
     global cuadrado_seleccionado, circulo_seleccionado, elipse_seleccionada, pixel_seleccionado
@@ -861,6 +886,7 @@ def on_release(event):
     elipse_seleccionada = None
     pixel_seleccionado = None
 
+
 # Función para dibujar un círculo en el subplot de Matplotlib
 def dibujar_circulo(event):
     global radio, ultimo_circulo, figuras_dibujadas
@@ -868,7 +894,7 @@ def dibujar_circulo(event):
     if circulo_activado and event.xdata is not None and event.ydata is not None:
         x, y = event.xdata, event.ydata
         radio = 5  # Puedes ajustar el tamaño del círculo según tus preferencias
-        circulo = Circle((x, y), radio,color=(0/255, 255/255, 0/255), fill=False)
+        circulo = Circle((x, y), radio, color=(0 / 255, 255 / 255, 0 / 255), fill=False)
         ax.add_patch(circulo)
         circulos_dibujados.append(circulo)  # Agrega el círculo a la lista de círculos dibujados
         ultimo_circulo = circulo  # Actualiza el último círculo dibujado
@@ -878,7 +904,6 @@ def dibujar_circulo(event):
         centro_x, centro_y = circulo.center
         radio_circulo = circulo.radius
     canvas.draw()
-
 
 
 def dibujar_pixel(event):
@@ -892,7 +917,8 @@ def dibujar_pixel(event):
         pixel = ax.scatter(x, y, color='red', s=tamaño_punto)
         pixeles_dibujados.append(pixel)
         ultimo_punto = pixel
-        figuras_dibujadas.append(('pixel', (pixel, (x, y))))  # Añade el pixel y sus coordenadas a la lista de figuras dibujadas
+        figuras_dibujadas.append(
+            ('pixel', (pixel, (x, y))))  # Añade el pixel y sus coordenadas a la lista de figuras dibujadas
 
         # Agrega las coordenadas del pixel a la lista de pixeles seleccionados
         pixeles_seleccionados.append((x, y))
@@ -925,6 +951,7 @@ def graficar_area_libre():
     else:
         messagebox.showerror("Error", "Dibuja al menos 3 puntos para formar un polígono.")
 
+
 def calcular_espectro(puntos):
     # Convierte los puntos (x, y) en una ruta (path) para el polígono
     ruta_poligono = mpath.Path(puntos)
@@ -944,8 +971,9 @@ def calcular_espectro(puntos):
 
     return espectro_promedio
 
+
 def conectar_puntos():
-    global puntos, lineas_figura, area_libre_activa, areas_libres, espectros_area_libre,puntos_dibujados
+    global puntos, lineas_figura, area_libre_activa, areas_libres, espectros_area_libre, puntos_dibujados
     # Asegúrate de usar la variable global lineas_figura
     if len(puntos) >= 2:
         # Conectar los puntos en orden
@@ -970,7 +998,11 @@ def conectar_puntos():
         # Almacena la figura de área libre en la lista global
         areas_libres.append((puntos_dibujados[:], lineas_figura[:]))  # Asegúrate de copiar las listas
 
-        figuras_dibujadas.append(('area_libre', (puntos_dibujados[:], lineas_figura[:])))  # Añade el área libre a la lista de figuras dibujadas
+        # Agrega los puntos del área libre a la lista global
+        puntos_area_libre.extend(puntos)
+
+        figuras_dibujadas.append(('area_libre', (
+        puntos_dibujados[:], lineas_figura[:])))  # Añade el área libre a la lista de figuras dibujadas
 
         # Limpia las listas para la próxima figura
         puntos = []
@@ -983,6 +1015,8 @@ def desactivar_area_libre():
     global area_libre_activa
     area_libre_activa = False  # Desactivar el área libre
     conectar_puntos()  # Conectar los puntos cuando se desactiva el área libre
+
+
 # Función para activar/desactivar el modo de área libre
 def alternar_area_libre():
     global area_libre_activa, puntos
@@ -1163,7 +1197,7 @@ def cerrar_ventana_principal():
 
 
 def borrar_figuras():
-    global cuadrados_dibujados, ultima_elipse, ultimo_circulo, ultimo_punto, pixeles_dibujados, pixeles_seleccionados, areas_libres
+    global cuadrados_dibujados, ultima_elipse, ultimo_circulo, ultimo_punto, pixeles_dibujados, pixeles_seleccionados, areas_libres, mascaras_dibujadas
 
     # Borrar círculos
     for circulo in circulos_dibujados:
@@ -1188,6 +1222,12 @@ def borrar_figuras():
 
     # Limpia las líneas de la figura creada mediante la unión de puntos
 
+    for mascara in mascaras_dibujadas:
+        mascara.remove()
+    mascaras_dibujadas.clear()  # Limpia la lista de máscaras dibujadas
+
+    # Limpia las líneas de la figura creada mediante la unión de puntos
+
     for ultimos_puntos_dibujados, ultimas_lineas_figura in areas_libres:
         for punto in ultimos_puntos_dibujados:
             punto.remove()
@@ -1199,7 +1239,6 @@ def borrar_figuras():
     espectros_area_libre.clear()
 
     canvas.draw()
-
 
 
 def borrar_ultima_figura():
@@ -1270,6 +1309,7 @@ def menu_tamano(opcion):
         tamano_figura(t_escala.get())
     # Establecer un límite al valor del control deslizante
     t_escala.configure(from_=1, to=100, resolution=1)
+
 
 def tamano_figura(val):
     global lado, s_x, s_y, ultima_elipse, ultimo_circulo, ultimo_cuadrado, relacion_aspecto_original
@@ -1347,6 +1387,7 @@ def tamano_figura(val):
                 ultima_elipse.set_width(tamano * relacion_aspecto)
         canvas.draw()
 
+
 def mostrar_encabezado():
     global hdul
     if hdul is None:
@@ -1374,7 +1415,6 @@ def actualizar_estado_menu():
         ver_menu.entryconfig("Ver Encabezado", state=tk.DISABLED)
     else:
         ver_menu.entryconfig("Ver Encabezado", state=tk.NORMAL)
-
 
 
 def ver_graficos():
@@ -1454,6 +1494,71 @@ def ver_graficos():
     # Agregar un botón para ver el gráfico seleccionado
     boton_ver = tk.Button(ventana_graficos, text="Ver Gráfico", command=mostrar_grafico_seleccionado)
     boton_ver.pack()
+
+def ver_mascaras():
+    global mask_collection
+
+    # Recupera todas las máscaras de la colección
+    mascaras = mask_collection.find()
+
+    # Crea una ventana emergente para mostrar los nombres de las máscaras
+    ventana_mascaras = tk.Toplevel()
+    ventana_mascaras.title("Máscaras Guardadas")
+
+    # Crea un cuadro de texto para mostrar los nombres de las máscaras
+    cuadro_mascaras = tk.Listbox(ventana_mascaras, selectmode=tk.SINGLE)
+    cuadro_mascaras.pack()
+
+    # Crea una lista de máscaras junto con sus nombres
+    lista_mascaras = []
+
+    # Agrega los nombres de las máscaras al cuadro de texto y a la lista
+    for mascara in mascaras:
+        nombre = mascara.get("nombre", "Sin Nombre")
+        lista_mascaras.append((nombre, mascara))  # Agrega la máscara y su nombre a la lista
+        cuadro_mascaras.insert(tk.END, nombre)
+
+    def obtener_coordenadas_seleccionada():
+        seleccion = cuadro_mascaras.curselection()  # Obtiene la máscara seleccionada
+        if seleccion:
+            indice_seleccionado = seleccion[0]
+            nombre_seleccionado = cuadro_mascaras.get(indice_seleccionado)  # Obtiene el nombre seleccionado
+            for nombre, mascara in lista_mascaras:
+                if nombre == nombre_seleccionado:
+                    coordenadas = mascara.get("coordenadas", [])
+                    puntos.extend(coordenadas)  # Agrega las coordenadas a la lista de puntos
+                    conectar_puntos()  # Conecta los puntos y calcula el espectro
+                    area_libre_activa = True  # Habilita el modo de área libre
+                    boton_area_libre.config(text="Desactivar Área Libre")
+                    messagebox.showinfo("Coordenadas de la Máscara",
+                                        f"Coordenadas de la máscara '{nombre}': {coordenadas}")
+
+    # Crea un botón para obtener las coordenadas de la máscara seleccionada
+    boton_obtener_coordenadas = tk.Button(ventana_mascaras, text="Obtener Coordenadas", command=obtener_coordenadas_seleccionada)
+    boton_obtener_coordenadas.pack()
+
+def dibujar_puntos_mascara(coordenadas, ax, canvas):
+    global puntos, mascaras_dibujadas
+    # Convierte las coordenadas en listas separadas de X e Y
+    x_coords = [coord[0] for coord in coordenadas]
+    y_coords = [coord[1] for coord in coordenadas]
+
+    # Dibuja los puntos en el gráfico sin borrar el gráfico anterior
+    puntos_mascara = ax.plot(x_coords, y_coords, 'ro')  # 'ro' representa círculos rojos
+    mascaras_dibujadas.append(puntos_mascara)
+
+    # Conecta los puntos para formar un área libre
+    lineas_mascara = ax.plot(x_coords + [x_coords[0]], y_coords + [y_coords[0]], 'r-')  # 'r-' representa una línea sólida roja
+    mascaras_dibujadas.append(lineas_mascara)
+
+    espectros_area_libre.clear()
+    puntos.clear()
+    coordenadas_mascara_seleccionada.clear()
+    puntos = []
+    # Actualiza el lienzo
+    canvas.draw()
+
+
 # Crear una función para configurar el menú
 def configurar_menu():
     global ver_menu
@@ -1472,6 +1577,7 @@ def configurar_menu():
     ver_menu.add_command(label="Ver Gráficos", command=lambda: ver_graficos())
     ver_menu.add_command(label="Ver Encabezado", command=lambda: mostrar_encabezado(),
                          state=tk.DISABLED)  # Agrega la opción de menú para ver el encabezado
+    ver_menu.add_command(label="Ver Máscaras", command=lambda: ver_mascaras())
 
 
 ventana = tk.Tk()
@@ -1504,10 +1610,8 @@ entrada_coord_y.grid(row=1, column=4, padx=5, pady=5)
 boton_graficar_coordenadas = tk.Button(ventana, text="Graficar Coordenadas", command=graficar_coordenadas)
 boton_graficar_coordenadas.grid(row=0, column=2, padx=5, pady=5)
 
-
 boton_comparar_graficos = tk.Button(ventana, text="Comparar Gráficos", command=comparar_graficos)
 boton_comparar_graficos.grid(row=0, column=3, padx=5, pady=5)
-
 
 ##entry para ir directamente a un frame
 etiqueta_coord_z = tk.Label(ventana, text="imagen:")
@@ -1666,8 +1770,8 @@ menu_figura.current(0)
 # Configurar el combobox para llamar a la función adecuada cuando cambie el valor
 menu_figura.bind("<<ComboboxSelected>>", lambda e: menu_tamano(menu_figura.get()))
 # Crear un control deslizante para cambiar el tamaño de las figuras
-t_escala = tk.Label(ventana, text = "Escala:")
+t_escala = tk.Label(ventana, text="Escala:")
 t_escala.grid(row=0, column=6, padx=5, pady=5)
-t_escala = Scale(ventana, from_=1, to=100, orient="horizontal", command=tamano_figura,width=20)
+t_escala = Scale(ventana, from_=1, to=100, orient="horizontal", command=tamano_figura, width=20)
 t_escala.grid(row=0, column=7, padx=5, pady=3)
 ventana.mainloop()

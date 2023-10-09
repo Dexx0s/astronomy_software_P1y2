@@ -1226,6 +1226,7 @@ def borrar_figuras():
         for linea in ultimas_lineas_figura:
             linea.remove()
     areas_libres.clear()  # Limpia la lista de áreas libres
+    puntos_area_libre.clear()
 
     # Limpia los espectros de las áreas libres
     espectros_area_libre.clear()
