@@ -1533,7 +1533,7 @@ def ver_mascaras():
                     puntos.extend(coordenadas)  # Agrega las coordenadas a la lista de puntos
                     conectar_puntos()  # Conecta los puntos y calcula el espectro
                     area_libre_activa = True  # Habilita el modo de área libre
-                    boton_area_libre.config(text="Desactivar Área Libre")
+                    print("Área Libre Activada")  # Muestra un mensaje en la consola
                     messagebox.showinfo("Coordenadas de la Máscara",
                                         f"Coordenadas de la máscara '{nombre}': {coordenadas}")
 
