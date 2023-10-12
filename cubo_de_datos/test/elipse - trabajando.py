@@ -136,7 +136,22 @@ def cargar_imagen_actual():
     ax.set_title(f"Imagen {imagen_actual + 1}/{num_frames}")
     canvas.draw()
     actualizar_etiqueta_coordenadas()
+def cargar_imagen_actual_2d():
+    global imagen_actual, boton_graficar, boton_anterior, boton_siguiente, boton_area_libre
+    print("llegue aca")
+    naxis = hdul[0].header['NAXIS']
+    if naxis == 2:
+        messagebox.showinfo("Advertencia",
+                            "El archivo FITS que ha seleccionado tiene solo 2 dimensiones. Solo se mostrará la imagen actual.")
 
+    ax.clear()
+    ax.imshow(datos_cubo[:, :], cmap='gray')
+    ax.set_title(f"Imagen {imagen_actual + 1}/{num_frames}")
+    canvas.draw()
+    boton_anterior.config(state=tk.DISABLED)
+    boton_siguiente.config(state=tk.DISABLED)
+    boton_graficar.config(state=tk.DISABLED)
+    boton_area_libre.config(state=tk.DISABLED)
 
 # funcion para cargar imagen desde entrada de texto
 def cargar_imagen():
@@ -324,7 +339,7 @@ def remove_nans(extension_valida):
 
 # Función para cargar un archivo FITS
 def abrir_archivo():
-    global archivo_fits, hdul, datos_cubo, num_frames, boton_anterior, boton_siguiente, boton_graficar
+    global archivo_fits, hdul, datos_cubo, num_frames, boton_anterior, boton_siguiente, boton_graficar, boton_area_libre
 
     # Resetea el archivo FITS y los datos del cubo
     archivo_fits = None
@@ -337,6 +352,7 @@ def abrir_archivo():
         try:
             # Abrir el archivo FITS
             hdul = fits.open(archivo_fits, ext=1)
+
             # Con esto podemos verificar que se tomen archivos FITS segun PRYMARY, IMAGE, DATA CUBE y ESPECTRUM
             extension_valida = None
             nombre_archivo = os.path.basename(archivo_fits)
@@ -369,46 +385,49 @@ def abrir_archivo():
             header = extension_valida.header
             # Imprimir el encabezado para ver la información
             print(header)
-
-            datos_cubo = extension_valida.data
-            tipo_extension = extension_valida.name
-            fecha_actual = datetime.now()
-
-            num_frames, num_rows, num_columns = datos_cubo.shape
-            print("ACA")
-
-            print(f"Número de cuadros: {num_frames}")
-            print(f"Número de filas: {num_rows}")
-            print(f"Número de columnas: {num_columns}")
-            cargar_imagen_actual()  # Cargar la primera imagen
-            # Habilitar los botones "Anterior" y "Siguiente"
-            boton_anterior.config(state=tk.NORMAL)
-            boton_siguiente.config(state=tk.NORMAL)
-            # Habilitar el botón "Graficar"
-            boton_graficar.config(state=tk.NORMAL)
-            actualizar_etiqueta_coordenadas()  # Agregado para actualizar coordenadas al cargar el archivo
-            actualizar_barra_desplazamiento()
+            naxis = hdul[0].header['NAXIS']
+            if naxis == 2:
+                print("paso por el naxis ==2")
+                datos_cubo = extension_valida.data
+                cargar_imagen_actual_2d()
+            else:
+                datos_cubo = extension_valida.data
+                cargar_imagen_actual()
+                tipo_extension = extension_valida.name
+                fecha_actual = datetime.now()
+                num_frames, num_rows, num_columns = datos_cubo.shape
+                print(f"Número de cuadros: {num_frames}")
+                print(f"Número de filas: {num_rows}")
+                print(f"Número de columnas: {num_columns}")
+                # Habilitar los botones "Anterior" y "Siguiente"
+                boton_anterior.config(state=tk.NORMAL)
+                boton_siguiente.config(state=tk.NORMAL)
+                # Habilitar el botón "Graficar"
+                boton_graficar.config(state=tk.NORMAL)
+                boton_area_libre.config(state=tk.NORMAL)
+                actualizar_etiqueta_coordenadas()  # Agregado para actualizar coordenadas al cargar el archivo
+                actualizar_barra_desplazamiento()
 
             # if switch_pymongo:
-            # Base de datos = File_Collection
-            file_info = {
-                "Data_id": data_id,  # Identificador
-                "File_name": nombre_archivo,  # File
-                "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
-                "Hora": fecha_actual.strftime("%H:%M:%S")  # Fecha segun Hora
-            }
-            file_collection.insert_one(file_info)
+                # Base de datos = File_Collection
+                file_info = {
+                    "Data_id": data_id,  # Identificador
+                    "File_name": nombre_archivo,  # File
+                    "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
+                    "Hora": fecha_actual.strftime("%H:%M:%S")  # Fecha segun Hora
+                }
+                file_collection.insert_one(file_info)
 
-            # Base de datos = Data_Collection
-            data_info = {
-                "Data_id": data_id,  # Identificador
-                "Filename": nombre_archivo,  # File
-                "Header": tipo_extension,  # Encabezado
-                "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
-                "Hora": fecha_actual.strftime("%H:%M:%S"),  # Fecha segun Hora
-                "Data": str(datos_cubo)  # Datos
-            }
-            data_collection.insert_one(data_info)
+                # Base de datos = Data_Collection
+                data_info = {
+                    "Data_id": data_id,  # Identificador
+                    "Filename": nombre_archivo,  # File
+                    "Header": tipo_extension,  # Encabezado
+                    "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
+                    "Hora": fecha_actual.strftime("%H:%M:%S"),  # Fecha segun Hora
+                    "Data": str(datos_cubo)  # Datos
+                }
+                data_collection.insert_one(data_info)
 
             actualizar_estado_menu()
         except Exception as e:
