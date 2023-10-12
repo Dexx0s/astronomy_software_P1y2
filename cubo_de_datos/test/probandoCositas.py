@@ -231,7 +231,10 @@ def crear_ventana_grafico():
     ventana_grafico.protocol("WM_DELETE_WINDOW", ventana_grafico.button_salir.invoke)
 
     ventanas_grafico.append(ventana_grafico)
-    
+
+    # Cuando ya no se necesite la figura, esta función la cierra
+    plt.close(figura_grafico)
+
 
 def guardar_coordenadas_en_mongodb():
     global puntos_area_libre, mask_collection
