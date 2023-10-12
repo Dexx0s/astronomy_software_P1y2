@@ -1300,6 +1300,7 @@ def borrar_ultima_figura():
             areas_libres.remove((ultimos_puntos_dibujados, ultimas_lineas_figura))
             if espectros_area_libre:
                 espectros_area_libre.pop()
+            puntos_area_libre.clear()  # Limpia la lista de puntos de área libre
     canvas.draw()
 
 
