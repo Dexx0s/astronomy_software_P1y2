@@ -131,9 +131,18 @@ def cargar_imagen_actual():
     global imagen_actual
     ax.clear()
     ax.imshow(datos_cubo[imagen_actual], cmap='gray')
+    # Vuelve a dibujar todas las figuras
+    for figura_info in figuras_dibujadas:
+        # Extrae la figura de la tupla
+        tipo_figura, info_figura = figura_info
+        if tipo_figura == 'area_libre':
+            puntos_dibujados, lineas_figura = info_figura
+            for linea in lineas_figura:
+                ax.add_line(linea)
+        else:
+            ax.add_patch(info_figura)
     ax.set_title(f"Imagen {imagen_actual + 1}/{num_frames}")
     canvas.draw()
-    actualizar_etiqueta_coordenadas()
 
 
 # funcion para cargar imagen desde entrada de texto
@@ -894,6 +903,7 @@ def dibujar_circulo(event):
         radio = 5  # Puedes ajustar el tamaño del círculo según tus preferencias
         circulo = Circle((x, y), radio, color=(0 / 255, 255 / 255, 0 / 255), fill=False)
         ax.add_patch(circulo)
+
         circulos_dibujados.append(circulo)  # Agrega el círculo a la lista de círculos dibujados
         ultimo_circulo = circulo  # Actualiza el último círculo dibujado
         figuras_dibujadas.append(('circulo', circulo))  # Añade el círculo a la lista de figuras dibujadas
@@ -1022,10 +1032,8 @@ def alternar_area_libre():
         area_libre_activa = False
         conectar_puntos()
         puntos = []  # Restablecer la lista de puntos
-        boton_area_libre.config(text="Activar Área Libre")
     else:
         area_libre_activa = True
-        boton_area_libre.config(text="Desactivar Área Libre")
 
 
 """        
@@ -1219,7 +1227,6 @@ def borrar_figuras():
     cuadrados_dibujados.clear()  # Limpia la lista de cuadrados dibujados
 
     # Limpia las líneas de la figura creada mediante la unión de puntos
-
     for ultimos_puntos_dibujados, ultimas_lineas_figura in areas_libres:
         for punto in ultimos_puntos_dibujados:
             punto.remove()
@@ -1231,7 +1238,11 @@ def borrar_figuras():
     # Limpia los espectros de las áreas libres
     espectros_area_libre.clear()
 
+    # Añade esta línea para vaciar la lista figuras_dibujadas
+    figuras_dibujadas.clear()
+
     canvas.draw()
+
 
 
 def borrar_ultima_figura():
@@ -1243,33 +1254,33 @@ def borrar_ultima_figura():
             pixel.remove()
             pixeles_dibujados.remove(pixel)
             pixeles_seleccionados.remove(coords)
-            # Actualiza ultimo_punto para referirse al siguiente pixel más reciente
             ultimo_punto = pixeles_dibujados[-1] if pixeles_dibujados else None
         elif tipo_figura == 'circulo':
             ultima_figura.remove()
             circulos_dibujados.remove(ultima_figura)
-            # Actualiza ultimo_circulo para referirse al siguiente círculo más reciente
             ultimo_circulo = circulos_dibujados[-1] if circulos_dibujados else None
         elif tipo_figura == 'elipse':
             ultima_figura.remove()
             elipses_dibujadas.remove(ultima_figura)
-            # Actualiza ultima_elipse para referirse a la siguiente elipse más reciente
             ultima_elipse = elipses_dibujadas[-1] if elipses_dibujadas else None
         elif tipo_figura == 'cuadrado':
             ultima_figura.remove()
             cuadrados_dibujados.remove(ultima_figura)
-            # Actualiza ultimo_cuadrado para referirse al siguiente cuadrado más reciente
             ultimo_cuadrado = cuadrados_dibujados[-1] if cuadrados_dibujados else None
         elif tipo_figura == 'area_libre':
             ultimos_puntos_dibujados, ultimas_lineas_figura = ultima_figura
             for punto in ultimos_puntos_dibujados:
                 punto.remove()
+                if punto in puntos_area_libre:
+                    puntos_area_libre.remove(punto)
             for linea in ultimas_lineas_figura:
                 linea.remove()
-            areas_libres.remove(ultima_figura)
+            areas_libres.remove((ultimos_puntos_dibujados, ultimas_lineas_figura))
             if espectros_area_libre:
                 espectros_area_libre.pop()
-        canvas.draw()
+    canvas.draw()
+
+
 
 
 def botones_actualizados():
@@ -1644,8 +1655,6 @@ boton_borrar_figuras.grid(row=3, column=6, padx=5, pady=10)
 boton_borrar_ultima_figura = tk.Button(ventana, text="Borrar Última Figura", command=borrar_ultima_figura)
 boton_borrar_ultima_figura.grid(row=3, column=7, padx=5, pady=10)
 
-boton_area_libre = tk.Button(ventana, text="Activar Área Libre", command=alternar_area_libre)
-boton_area_libre.grid(row=2, column=8, padx=5, pady=10, sticky="e")
 
 boton_salir = tk.Button(ventana, text="Salir", command=ventana.destroy)
 boton_salir.grid(row=3, column=5, padx=5, pady=10)
@@ -1711,6 +1720,10 @@ def cambiar_tipo_figura(event):
     global movimiento_activado, pixel_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado
     seleccion = combooptions.get()
 
+    # Si la opción de área libre estaba activada, conecta los puntos antes de cambiar a la nueva opción
+    if area_activado:
+        alternar_area_libre()
+
     # Restablecer todas las opciones a False
     movimiento_activado = False
     pixel_activado = False
@@ -1734,7 +1747,7 @@ def cambiar_tipo_figura(event):
     elif seleccion == "Cuadrado":
         cuadrado_activado = True
     elif seleccion == "Area Libre":
-        area_activado = True
+        alternar_area_libre()  # Llama a alternar_area_libre cuando se selecciona "Area Libre"
 
     # Deshabilitar eventos relacionados con el movimiento si no está seleccionado
     if seleccion != "Movimiento":
