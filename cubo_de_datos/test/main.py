@@ -237,7 +237,7 @@ def crear_ventana_grafico():
     boton_guardar = tk.Button(ventana_grafico, text="Guardar", command=lambda: guardar_grafico(cuadro_comentarios))
     boton_guardar.grid(row=0, column=1, padx=10, pady=10)  # Ubica el botón en la misma fila y columna 1 al lado derecho
 
-    boton_guardar_mascara = tk.Button(ventana_grafico, text="Guardar mascara", command=lambda: guardar_coordenadas_en_mongodb())
+    boton_guardar_mascara = tk.Button(ventana_grafico, text="Guardar mascara", command=lambda: guardar_ultima_area_libre_en_mongodb())
     boton_guardar_mascara.grid(row=0, column=2, padx=10, pady=10)  # Ubica el botón en la misma fila y columna 1 al lado derecho
 
     ventana_grafico.button_salir = tk.Button(ventana_grafico, text="Salir", command=ventana_grafico.destroy)
@@ -251,22 +251,25 @@ def crear_ventana_grafico():
     plt.close(figura_grafico)
 
 
-def guardar_coordenadas_en_mongodb():
+def guardar_ultima_area_libre_en_mongodb():
     global puntos_area_libre, mask_collection
 
-    # Utiliza un cuadro de diálogo para pedir el nombre de la máscara
-    nombre_mascara = simpledialog.askstring("Nombre de la Máscara", "Ingresa un nombre para la máscara:")
+    # Verifica si hay puntos de área libre para guardar
+    if puntos_area_libre:
+        # Utiliza un cuadro de diálogo para pedir el nombre de la máscara
+        nombre_mascara = simpledialog.askstring("Nombre de la Máscara", "Ingresa un nombre para la máscara:")
 
-    if nombre_mascara is not None and nombre_mascara.strip() != "":
-        # Insertar las coordenadas en la colección con el nombre proporcionado
-        data = {"nombre": nombre_mascara, "coordenadas": puntos_area_libre}
-        mask_collection.insert_one(data)
-        puntos_area_libre.clear()  # Vacía la lista de puntos
-        # Mostrar un mensaje de guardado exitoso
-        messagebox.showinfo("Guardado", f"Coordenadas de la máscara '{nombre_mascara}' guardadas correctamente.")
+        if nombre_mascara is not None and nombre_mascara.strip() != "":
+            # Inserta las coordenadas en la colección con el nombre proporcionado
+            data = {"nombre": nombre_mascara, "coordenadas": puntos_area_libre}
+            mask_collection.insert_one(data)
+            puntos_area_libre.clear()  # Vacía la lista de puntos
+            # Mostrar un mensaje de guardado exitoso
+            messagebox.showinfo("Guardado", f"Coordenadas de la máscara '{nombre_mascara}' guardadas correctamente.")
+        else:
+            messagebox.showerror("Error", "Debes ingresar un nombre para la máscara.")
     else:
-        messagebox.showerror("Error", "Debes ingresar un nombre para la máscara.")
-
+        messagebox.showerror("Error", "No hay puntos de área libre para guardar.")
 
 def guardar_grafico(cuadro_comentarios):
     global figura_grafico  # Asegúrate de que la figura sea global y accesible aquí
