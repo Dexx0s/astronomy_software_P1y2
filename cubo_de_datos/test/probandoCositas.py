@@ -210,8 +210,6 @@ def crear_ventana_grafico():
     canvas_grafico = FigureCanvasTkAgg(figura_grafico, master=ventana_grafico)
     canvas_grafico.get_tk_widget().grid(row=0, column=0, padx=10, pady=10)
 
-    ventana_grafico.protocol("WM_DELETE_WINDOW", cerrar_ventana_grafico)
-
     # Agregar un cuadro de texto para ingresar comentarios
     cuadro_comentarios = tk.Text(ventana_grafico, height=5, width=60)
     cuadro_comentarios.grid(row=1, column=0, padx=10, pady=10)
@@ -230,8 +228,10 @@ def crear_ventana_grafico():
     ventana_grafico.button_salir = tk.Button(ventana_grafico, text="Salir", command=ventana_grafico.destroy)
     ventana_grafico.button_salir.grid(row=2, column=0,
                                       columnspan=2)  # Ubica el botón de salir en la fila 2 y columnas 0 y 1
+    ventana_grafico.protocol("WM_DELETE_WINDOW", ventana_grafico.button_salir.invoke)
 
     ventanas_grafico.append(ventana_grafico)
+    
 
 def guardar_coordenadas_en_mongodb():
     global puntos_area_libre, mask_collection
@@ -276,9 +276,7 @@ def guardar_grafico(cuadro_comentarios):
 # Función para cerrar la ventana emergente del gráfico
 def cerrar_ventana_grafico():
     global ventana_grafico
-    ventana_grafico = ventanas_grafico.pop()
     ventana_grafico.destroy()
-
 
 def iniciar_arrastre(event):
     global dragging
