@@ -734,7 +734,7 @@ def on_image_click(event):
         # Modo "Área Libre"
         if area_libre_activa and not circulo_activado:
             puntos.append((x, y))
-            punto = ax.plot(x, y, 'ro', markersize=5)  # 'ro' representa un punto rojo
+            punto = ax.plot(x, y,'o-', color='#39FF14', markersize=5)  # 'ro' representa un punto rojo
             puntos_dibujados.append(punto[0])  # Agrega el punto a la lista de puntos dibujados
             canvas.draw()
 
@@ -923,7 +923,7 @@ def dibujar_circulo(event):
     if circulo_activado and event.xdata is not None and event.ydata is not None:
         x, y = event.xdata, event.ydata
         radio = 5  # Puedes ajustar el tamaño del círculo según tus preferencias
-        circulo = Circle((x, y), radio, color=(0 / 255, 255 / 255, 0 / 255), fill=False)
+        circulo = Circle((x, y), radio, color='#FFA500', fill=False)
         ax.add_patch(circulo)
 
         circulos_dibujados.append(circulo)  # Agrega el círculo a la lista de círculos dibujados
@@ -1010,13 +1010,13 @@ def conectar_puntos():
         for i in range(len(puntos) - 1):
             x1, y1 = puntos[i]
             x2, y2 = puntos[i + 1]
-            linea = ax.plot([x1, x2], [y1, y2], 'ro-')  # Conecta los puntos con una línea roja
+            linea = ax.plot([x1, x2], [y1, y2],'o-', color='#39FF14')  # Conecta los puntos con una línea roja
             lineas_figura.append(linea[0])  # Agrega la línea a la lista
 
         # Conectar el último punto con el primer punto para cerrar el área
         x1, y1 = puntos[-1]
         x2, y2 = puntos[0]
-        linea = ax.plot([x1, x2], [y1, y2], 'ro-')  # Conecta el último punto con el primer punto
+        linea = ax.plot([x1, x2], [y1, y2], 'o-', color='#39FF14')  # Conecta el último punto con el primer punto
         lineas_figura.append(linea[0])  # Agrega la línea a la lista
 
         # Calcula el espectro del área libre
