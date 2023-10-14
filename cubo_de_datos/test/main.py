@@ -1600,98 +1600,100 @@ def configurar_menu():
     ver_menu.add_command(label="Ver Máscaras", command=lambda: ver_mascaras())
 
 
+
+
 ventana = tk.Tk()
 ventana.title("Cargar Archivos Fits")
-ventana.geometry("1250x900")
+ventana.geometry("870x900")
+ventana.configure(bg='#E6F3FF')
+ventana.resizable(False, False)
 
 ventana.protocol("WM_DELETE_WINDOW", cerrar_ventana_principal)
 
-etiqueta1 = tk.Label(ventana, text="Subir Archivo:")
-etiqueta1.grid(row=0, column=0, padx=5, pady=5, sticky="w")
 
-select_archivo = tk.Button(ventana, text="Seleccionar Archivo", command=abrir_archivo)
-select_archivo.grid(row=0, column=1, padx=5, pady=1)
 
-etiqueta_seleccionar_pixel = tk.Label(ventana, text="Seleccionar pixel:")
-etiqueta_seleccionar_pixel.grid(row=1, column=0, padx=5, pady=5, sticky="w")
-
-etiqueta_coord_x = tk.Label(ventana, text="Coordenada X:")
+etiqueta_coord_x = tk.Label(ventana, text="Coordenada X:", bg='#E6F3FF')
 etiqueta_coord_x.grid(row=1, column=1, padx=5, pady=5, sticky="e")
 
-entrada_coord_x = tk.Entry(ventana)
+entrada_coord_x = tk.Entry(ventana, bd=2, relief="solid")
 entrada_coord_x.grid(row=1, column=2, padx=5, pady=5)
 
-etiqueta_coord_y = tk.Label(ventana, text="Coordenada Y:")
+etiqueta_coord_y = tk.Label(ventana, text="Coordenada Y:", bg='#E6F3FF')
 etiqueta_coord_y.grid(row=1, column=3, padx=5, pady=5, sticky="e")
 
-entrada_coord_y = tk.Entry(ventana)
+entrada_coord_y = tk.Entry(ventana, bd=2, relief="solid")
 entrada_coord_y.grid(row=1, column=4, padx=5, pady=5)
 
-boton_graficar_coordenadas = tk.Button(ventana, text="Graficar Coordenadas", command=graficar_coordenadas)
-boton_graficar_coordenadas.grid(row=0, column=2, padx=5, pady=5)
-
-boton_comparar_graficos = tk.Button(ventana, text="Comparar Gráficos", command=comparar_graficos)
-boton_comparar_graficos.grid(row=0, column=3, padx=5, pady=5)
 
 ##entry para ir directamente a un frame
-etiqueta_coord_z = tk.Label(ventana, text="imagen:")
-etiqueta_coord_z.grid(row=2, column=3, padx=5, pady=5, sticky="e")
+etiqueta_coord_z = tk.Label(ventana, text="imagen:", bg='#E6F3FF')
+etiqueta_coord_z.grid(row=2, column=0, padx=5, pady=5, sticky="e")
 
-entrada_coord_z = tk.Entry(ventana)
-entrada_coord_z.grid(row=2, column=4, padx=5, pady=5)
+entrada_coord_z = tk.Entry(ventana, bd=2, relief="solid")
+entrada_coord_z.grid(row=2, column=1, padx=5, pady=5)
 
+boton_frame = tk.Button(ventana, text="ir a imagen", command=cargar_imagen, bg='#808080', fg='white')
+boton_frame.grid(row=2, column=2, padx=5, pady=10)
+
+
+boton_graficar_coordenadas = tk.Button(ventana, text="Graficar Coordenadas", command=graficar_coordenadas, bg='#808080', fg='white')
+boton_graficar_coordenadas.grid(row=1, column=0, padx=5, pady=5)
+
+# Crear un marco principal
+marco_principal = tk.Frame(ventana, bg="#808080", height=900, bd=2, relief="solid")
+marco_principal.grid(row=4, column=5, padx=5, pady=5)
+
+#### Marco y datos para lo relacionado con graficar las coordenadas#########################
+marco = tk.Frame(marco_principal, bg="#A9A9A9", width=200, height=100, bd=2, relief="solid")
+marco.grid(row=2, column=0, padx=10, pady=20)
+label_marco = tk.Label(marco, text="Opciones para graficar",bg="black", fg="white")
+label_marco.pack(fill='x')
+
+# Agregar el botón "Graficar" al marco
+boton_graficar = tk.Button(marco, text="Graficar", command=graficar, bg="green", fg="white", state=tk.DISABLED)
+boton_graficar.pack(padx=5, pady=5)
+
+# Agregar el botón "Comparar Gráficos" al marco
+boton_comparar_graficos = tk.Button(marco, text="Comparar Gráficos", command=comparar_graficos, bg='#008000', fg='white')
+boton_comparar_graficos.pack(padx=5, pady=5)
+##########################################################
+
+### Marco y datos para lo relacionado lo de borrar figuras##################################################
+
+# Crear un marco para las opciones de borrado
+marco_borrado = tk.Frame(marco_principal, bg="#A9A9A9", width=200, height=100, bd=2, relief="solid")
+marco_borrado.grid(row=1, column=0, padx=10, pady=20)
+label_borrado = tk.Label(marco_borrado, text="Opciones de borrar",bg="black", fg="white")
+label_borrado.pack(fill='x')
+
+boton_borrar_figuras = tk.Button(marco_borrado, text="Borrar Figuras", command=borrar_figuras, bg='#8B0000', fg='white')
+boton_borrar_figuras.pack(padx=5, pady=5)
+
+# Agregar el botón "Borrar Última Figura" al marco
+boton_borrar_ultima_figura = tk.Button(marco_borrado, text="Borrar Última Figura", command=borrar_ultima_figura, bg='#8B0000', fg='white')
+boton_borrar_ultima_figura.pack(padx=5, pady=5)
+############################################################################################################################
 # inicio en 0  para no tener errores
 entrada_coord_z.insert(0, "0")
 
-boton_frame = tk.Button(ventana, text="ir a imagen", command=cargar_imagen)
-boton_frame.grid(row=2, column=4, columnspan=5, padx=5, pady=10)
-
-##comobobox graficos
-combooptions_text = tk.Label(ventana, text="Acciones")
-combooptions_text.grid(row=2, column=0, padx=5, pady=10)
-combooptions = ttk.Combobox(ventana, values=["--select items--", "Movimiento", "Cuadrado", "Pixel", "Circulo", "Elipse",
-                                             "Area Libre"])
-combooptions.grid(row=2, column=1, padx=5, pady=10)
-
-##configuracion combobox
-combooptions.configure(state="readonly")
-combooptions.current(0)
-
-boton_graficar = tk.Button(ventana, text="Graficar", command=graficar, bg="green", fg="white", state=tk.DISABLED)
-boton_graficar.grid(row=2, column=0, columnspan=5, padx=5, pady=10)
-
-boton_anterior = tk.Button(ventana, text="Anterior", command=cargar_imagen_anterior, state=tk.DISABLED)
+boton_anterior = tk.Button(ventana, text="Anterior", command=cargar_imagen_anterior, state=tk.DISABLED, bg='#808080', fg='white')
 boton_anterior.grid(row=3, column=0, padx=5, pady=5)
 
-boton_siguiente = tk.Button(ventana, text="Siguiente", command=cargar_siguiente_imagen, state=tk.DISABLED)
+boton_siguiente = tk.Button(ventana, text="Siguiente", command=cargar_siguiente_imagen, state=tk.DISABLED, bg='#808080', fg='white')
 boton_siguiente.grid(row=3, column=4, padx=5, pady=5)
 
 # Crear una barra de desplazamiento horizontal
-barra_desplazamiento = tk.Scale(ventana, orient="horizontal", command=cargar_imagen_desde_barra)
+barra_desplazamiento = tk.Scale(ventana, orient="horizontal", command=cargar_imagen_desde_barra, bg='#E6F3FF')
 barra_desplazamiento.grid(row=3, column=1, columnspan=3, padx=5, pady=5, sticky="ew")
-
-# Crear un botón para borrar figuras (círculos o elipses)
-boton_borrar_figuras = tk.Button(ventana, text="Borrar Figuras", command=borrar_figuras)
-boton_borrar_figuras.grid(row=3, column=6, padx=5, pady=10)
-
-# Crear un botón para borrar la última figura dibujada (círculo o elipse)
-boton_borrar_ultima_figura = tk.Button(ventana, text="Borrar Última Figura", command=borrar_ultima_figura)
-boton_borrar_ultima_figura.grid(row=3, column=7, padx=5, pady=10)
-
-
-boton_salir = tk.Button(ventana, text="Salir", command=ventana.destroy)
-boton_salir.grid(row=3, column=5, padx=5, pady=10)
 
 # Crear una figura de Matplotlib y canvas
 fig = Figure(figsize=(6, 6))
 ax = fig.add_subplot(111)
 canvas = FigureCanvasTkAgg(fig, master=ventana)
-canvas.get_tk_widget().grid(row=4, column=0, columnspan=5, padx=5, pady=10)
+canvas_widget = canvas.get_tk_widget()
+canvas_widget.config(bd=2, relief="solid")  # Agregar un borde
+canvas_widget.grid(row=4, column=0, columnspan=5, padx=5, pady=10)
 
-# Conectar eventos del ratón para el arrastre
-# canvas.get_tk_widget().bind("<ButtonPress-1>", iniciar_arrastre)
-# canvas.get_tk_widget().bind("<B1-Motion>", mover_imagen)
-# canvas.get_tk_widget().bind("<ButtonRelease-1>", detener_arrastre)
 """canvas.get_tk_widget().bind("<Button-3>", abrir_menu_desplegable)"""
 canvas.get_tk_widget().bind("<Button-1>", on_image_click)
 
@@ -1718,25 +1720,6 @@ canvas.mpl_connect('button_press_event', dibujar_pixel)
 canvas.mpl_connect('button_press_event', on_press)
 canvas.mpl_connect('motion_notify_event', on_motion)
 canvas.mpl_connect('button_release_event', on_release)
-
-
-# Crear un control deslizante para cambiar el tamaño de la figura (círculo o elipse)
-# tamano_scale = Scale(ventana, from_=1, to=100, orient="horizontal", label="Tamaño de la Figura", command=tamano_figura,width=20)
-# tamano_scale.grid(row=3, column=8, padx=5, pady=10)  # Ajusta la ubicación del control deslizante
-
-# Crea los controles deslizantes para ancho, alto y rotación de la elipse
-# Coloca los controles deslizantes en la ventana packs
-# elipse_ancho = tk.Scale(ventana, from_=1, to=100, orient="horizontal", label="Ancho Elipse")
-# elipse_ancho.grid(row=4, column=5, padx=5, pady=10)
-# elipse_alto = tk.Scale(ventana, from_=1, to=100, orient="horizontal", label="Alto Elipse")
-# elipse_alto.grid(row=4, column=6, padx=5, pady=10)
-# rotacion_elipse = tk.Scale(ventana, from_=0, to=180, orient="horizontal", label="Rotación Elipse")
-# rotacion_elipse.grid(row=4, column=7, padx=5, pady=10)
-# Configura las barras de desplazamiento para llamar a las funciones adecuadas cuando cambien los valores
-# elipse_ancho.config(command=tamano_eclipse)
-# elipse_alto.config(command=tamano_eclipse)
-# rotacion_elipse.config(command=tamano_eclipse)
-
 
 # combobox selector
 def cambiar_tipo_figura(event):
@@ -1779,21 +1762,45 @@ def cambiar_tipo_figura(event):
         canvas.get_tk_widget().unbind("<ButtonRelease-1>")
 
 
+#############################marco para lo de el menu combobox############################
+# Crear un marco para las opciones de figura
+marco_figura = tk.Frame(marco_principal, bg="#A9A9A9", width=200, height=100, bd=2, relief="solid")
+marco_figura.grid(row=0, column=0, padx=10, pady=20)
+label_figura = tk.Label(marco_figura, text="Menú de opciones",  bg="black", fg="white")
+label_figura.pack(fill='x')
+
+# Agregar el ComboBox al marco
+combooptions = ttk.Combobox(marco_figura, values=["--select items--", "Movimiento", "Cuadrado", "Pixel", "Circulo", "Elipse", "Area Libre"])
+combooptions.pack(padx=5, pady=5)
+combooptions.configure(state="readonly")
+combooptions.current(0)
+
 # Enlazar la función cambiar_tipo_figura al ComboBox
 combooptions.bind("<<ComboboxSelected>>", cambiar_tipo_figura)
 configurar_menu()
-# Menu Tamaño Figura
-menu_figura_text = tk.Label(ventana, text="Tamaño figura:")
-menu_figura_text.grid(row=0, column=4, padx=5, pady=5)
-menu_figura = ttk.Combobox(ventana, values=["Equivalente", "Alto", "Ancho"])
-menu_figura.grid(row=0, column=5, padx=5, pady=5)
+
+########################## marco para Menu Tamaño Figura ###################################
+
+# Crear un marco para las opciones de tamaño de figura
+marco_tamano = tk.Frame(marco_principal, bg="#A9A9A9", width=200, height=100, bd=2, relief="solid")
+marco_tamano.grid(row=3, column=0, padx=10, pady=20)
+label_tamano = tk.Label(marco_tamano, text="Opciones de tamaño figura", bg="black", fg="white")
+label_tamano.pack(fill='x')
+
+# Agregar el menú de opciones de tamaño al marco
+menu_figura = ttk.Combobox(marco_tamano, values=["Equivalente", "Alto", "Ancho"])
+menu_figura.pack(padx=5, pady=5)
 menu_figura.configure(state="readonly")
 menu_figura.current(0)
+
+###############################################################################################
+
+
 # Configurar el combobox para llamar a la función adecuada cuando cambie el valor
 menu_figura.bind("<<ComboboxSelected>>", lambda e: menu_tamano(menu_figura.get()))
 # Crear un control deslizante para cambiar el tamaño de las figuras
-t_escala = tk.Label(ventana, text="Escala:")
-t_escala.grid(row=0, column=6, padx=5, pady=5)
-t_escala = Scale(ventana, from_=1, to=100, orient="horizontal", command=tamano_figura, width=20)
-t_escala.grid(row=0, column=7, padx=5, pady=3)
+
+# Agregar la barra de desplazamiento al marco
+t_escala = tk.Scale(marco_tamano, from_=1, to=100, orient="horizontal", command=tamano_figura, width=20)
+t_escala.pack(padx=5, pady=5)
 ventana.mainloop()
