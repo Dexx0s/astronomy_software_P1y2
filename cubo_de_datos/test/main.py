@@ -9,6 +9,7 @@ from astropy.io import fits
 import pymongo
 from datetime import datetime
 import matplotlib
+from astropy.modeling import models, fitting
 from matplotlib import pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import os
@@ -240,6 +241,11 @@ def crear_ventana_grafico():
     boton_guardar_mascara = tk.Button(ventana_grafico, text="Guardar mascara", command=lambda: guardar_ultima_area_libre_en_mongodb())
     boton_guardar_mascara.grid(row=0, column=2, padx=10, pady=10)  # Ubica el botón en la misma fila y columna 1 al lado derecho
 
+    # Crear el botón de "Ajuste gausiano" y asociarlo a la función de ajuste
+    boton_ajuste_gausiano = tk.Button(ventana_grafico, text="Ajuste gausiano",
+                                      command=lambda: ajuste_gausiano(espectro))
+    boton_ajuste_gausiano.grid(row=0, column=3, padx=10, pady=10)  # Ajusta la ubicación del botón
+
     ventana_grafico.button_salir = tk.Button(ventana_grafico, text="Salir", command=ventana_grafico.destroy)
     ventana_grafico.button_salir.grid(row=2, column=0,
                                       columnspan=2)  # Ubica el botón de salir en la fila 2 y columnas 0 y 1
@@ -451,7 +457,7 @@ def abrir_archivo():
 
 # Función para graficar el espectro del píxel seleccionado
 def graficar(x=None, y=None, ancho=None, alto=None, angulo=None):
-    global circulos_dibujados, datos_cubo, figura_grafico, axes_grafico, ventana_grafico_abierta, linea_grafico
+    global espectro, circulos_dibujados, datos_cubo, figura_grafico, axes_grafico, ventana_grafico_abierta, linea_grafico
     global linea_grafico, figura_grafico, axes_grafico, ventana_grafico, ventana_grafico_abierta
     global area_libre_activa, puntos
     ventana_grafico_abierta = False
@@ -583,6 +589,40 @@ def graficar(x=None, y=None, ancho=None, alto=None, angulo=None):
                     figura_grafico.canvas.draw()
         except ValueError:
             messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
+
+def ajuste_gausiano(espectro):
+    # Crear un array con valores x para el ajuste
+    x = np.arange(len(espectro))
+
+    # Definir un modelo gaussiano
+    gaussiano_init = models.Gaussian1D(amplitude=np.max(espectro), mean=np.argmax(espectro), stddev=1.0)
+
+    # Inicializar el ajuste
+    fitter = fitting.LevMarLSQFitter()
+
+    # Realizar el ajuste del modelo a los datos
+    gaussian_fit = fitter(gaussiano_init, x, espectro)
+
+    # Extraer los parámetros del ajuste
+    amplitude_opt = gaussian_fit.amplitude.value
+    mean_opt = gaussian_fit.mean.value
+    stddev_opt = gaussian_fit.stddev.value
+
+    # Graficar el espectro y el ajuste
+    plt.figure()
+    plt.plot(x, espectro, 'b', label='Espectro')
+    plt.plot(x, gaussian_fit(x), 'r', label='Ajuste Gaussiano')
+    plt.legend(loc='best')
+    plt.title('Ajuste Gaussiano del Espectro')
+    plt.xlabel('Índice del Píxel')
+    plt.ylabel('Intensidad')
+
+    # Imprimir los parámetros del ajuste
+    print(f'Amplitud óptima: {amplitude_opt}')
+    print(f'Valor medio óptimo: {mean_opt}')
+    print(f'Desviación estándar óptima: {stddev_opt}')
+
+    plt.show()
 
 
 def comparar_graficos(x=None, y=None, ancho=None, alto=None, angulo=None):
