@@ -110,7 +110,7 @@ cuadrados_invisibles = []  # Lista para almacenar los cuadrados invisibles
 ultimo_punto = None
 pixeles_seleccionados = []
 pixeles_dibujados = []
-
+path_collections = []
 # switch_pymongo=0
 # if switch_pymongo:
 cliente = pymongo.MongoClient("mongodb://localhost:27017/")
@@ -141,7 +141,12 @@ def cargar_imagen_actual():
             for linea in lineas_figura:
                 ax.add_line(linea)
         else:
-            ax.add_patch(info_figura)
+            if isinstance(info_figura, tuple):
+                info_figura = info_figura[0]
+            if isinstance(info_figura, matplotlib.patches.Patch):
+                ax.add_patch(info_figura)
+            elif isinstance(info_figura, matplotlib.collections.PathCollection):
+                ax.add_collection(info_figura)
     ax.set_title(f"Imagen {imagen_actual + 1}/{num_frames}")
     canvas.draw()
 
@@ -981,10 +986,9 @@ def dibujar_pixel(event):
 
     if pixel_activado and event.xdata is not None and event.ydata is not None:
         x, y = event.xdata, event.ydata
-        print(f"x: {x}, y: {y}")  # Agrega esta línea para imprimir las coordenadas
-        # Solo para que el punto sea visible segun el pixel seleccionado por el usuario
         tamaño_punto = 4
         pixel = ax.scatter(x, y, color='red', s=tamaño_punto)
+        path_collections.append(pixel)
         pixeles_dibujados.append(pixel)
         ultimo_punto = pixel
         figuras_dibujadas.append(
