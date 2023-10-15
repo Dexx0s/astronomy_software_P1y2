@@ -1,5 +1,5 @@
 import io
-
+import matplotlib.patches as mpatches
 import numpy as np
 import tkinter as tk
 from tkinter import filedialog, messagebox, Toplevel, Menu, simpledialog
@@ -107,7 +107,7 @@ cuadrados_visibles = []  # Lista para almacenar los cuadrados visibles
 cuadrados_invisibles = []  # Lista para almacenar los cuadrados invisibles
 
 # Variables para el pixel
-ultimo_punto = None
+ultimo_pixel = None
 pixeles_seleccionados = []
 pixeles_dibujados = []
 path_collections = []
@@ -982,23 +982,23 @@ def dibujar_circulo(event):
 
 
 def dibujar_pixel(event):
-    global pixel_activado, ultimo_punto, pixeles_seleccionados, pixeles_dibujados, figuras_dibujadas
+    global pixel_activado, ultimo_pixel, pixeles_seleccionados, pixeles_dibujados, figuras_dibujadas
 
     if pixel_activado and event.xdata is not None and event.ydata is not None:
         x, y = event.xdata, event.ydata
-        tamaño_punto = 4
-        pixel = ax.scatter(x, y, color='red', s=tamaño_punto)
-        path_collections.append(pixel)
-        pixeles_dibujados.append(pixel)
-        ultimo_punto = pixel
-        figuras_dibujadas.append(
-            ('pixel', (pixel, (x, y))))  # Añade el pixel y sus coordenadas a la lista de figuras dibujadas
+        print(f"x: {x}, y: {y}")  # Agrega esta línea para imprimir las coordenadas
+        # Solo para que el punto sea visible segun el pixel seleccionado por el usuario
+        tamaño_punto = 0.5  # Tamaño del "píxel"
+        pixel = mpatches.Circle((x, y), tamaño_punto, color='red')
+        ax.add_patch(pixel)
 
+        pixeles_dibujados.append(pixel)
+        ultimo_pixel = pixel
+        figuras_dibujadas.append(('pixel', pixel))  # Añade el pixel y sus coordenadas a la lista de figuras dibujadas
         # Agrega las coordenadas del pixel a la lista de pixeles seleccionados
         pixeles_seleccionados.append((x, y))
 
-        # Actualiza la gráfica
-        canvas.draw()
+    canvas.draw()
 
 
 def graficar_area_libre():
@@ -1312,15 +1312,16 @@ def borrar_figuras():
 
 
 def borrar_ultima_figura():
-    global ultimo_circulo, ultimo_cuadrado, ultima_elipse, ultimo_punto
+    global ultimo_circulo, ultimo_cuadrado, ultima_elipse, ultimo_pixel
     if figuras_dibujadas:
         tipo_figura, ultima_figura = figuras_dibujadas.pop()
         if tipo_figura == 'pixel':
-            pixel, coords = ultima_figura
-            pixel.remove()
-            pixeles_dibujados.remove(pixel)
-            pixeles_seleccionados.remove(coords)
-            ultimo_punto = pixeles_dibujados[-1] if pixeles_dibujados else None
+            ultima_figura.remove()
+            pixeles_dibujados.remove(ultima_figura)
+            ultimo_pixel = pixeles_dibujados[-1] if pixeles_dibujados else None
+            # Obtiene las coordenadas del pixel
+            coordenadas_pixel = ultima_figura.center
+            pixeles_seleccionados.remove(coordenadas_pixel)
         elif tipo_figura == 'circulo':
             ultima_figura.remove()
             circulos_dibujados.remove(ultima_figura)
