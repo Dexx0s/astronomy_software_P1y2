@@ -5,6 +5,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, Toplevel, Menu, simpledialog
 
 from PIL import Image, ImageTk
+from scipy.optimize import optimize, curve_fit
 from astropy.io import fits
 import pymongo
 from datetime import datetime
@@ -248,7 +249,7 @@ def crear_ventana_grafico():
 
     # Crear el botón de "Ajuste gausiano" y asociarlo a la función de ajuste
     boton_ajuste_gausiano = tk.Button(ventana_grafico, text="Ajuste gausiano",
-                                      command=lambda: ajuste_gausiano(espectro))
+                                      command=lambda: ajustes_grafico())
     boton_ajuste_gausiano.grid(row=0, column=3, padx=10, pady=10)  # Ajusta la ubicación del botón
 
     ventana_grafico.button_salir = tk.Button(ventana_grafico, text="Salir", command=ventana_grafico.destroy)
@@ -462,8 +463,8 @@ def abrir_archivo():
 
 # Función para graficar el espectro del píxel seleccionado
 def graficar(x=None, y=None, ancho=None, alto=None, angulo=None):
-    global espectro, circulos_dibujados, datos_cubo, figura_grafico, axes_grafico, ventana_grafico_abierta, linea_grafico
-    global linea_grafico, figura_grafico, axes_grafico, ventana_grafico, ventana_grafico_abierta
+    global espectro, circulos_dibujados, datos_cubo, figura_grafico, axes_grafico, ventana_grafico_abierta, linea_grafico, espectro_promedio
+    global linea_grafico, figura_grafico, axes_grafico, ventana_grafico, ventana_grafico_abierta, centro_y,centro_x,radio
     global area_libre_activa, puntos
     ventana_grafico_abierta = False
     if datos_cubo is not None:
@@ -596,6 +597,8 @@ def graficar(x=None, y=None, ancho=None, alto=None, angulo=None):
             messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
 
 def ajuste_gausiano(espectro):
+    global area_libre_activa, pixel_activado, cuadrado_activado, eclipse_activado
+
     # Crear un array con valores x para el ajuste
     x = np.arange(len(espectro))
 
@@ -622,12 +625,162 @@ def ajuste_gausiano(espectro):
     plt.xlabel('Índice del Píxel')
     plt.ylabel('Intensidad')
 
+        # Imprimir los parámetros del ajuste
+    print(f'Amplitud óptima: {amplitude_opt}')
+    print(f'Valor medio óptimo: {mean_opt}')
+    print(f'Desviación estándar óptima: {stddev_opt}')
+
+    plt.show()
+
+def ajuste_circulo(espectro_promedio):
+    # Crear un array con valores x para el ajuste
+    x = np.arange(len(espectro_promedio))
+
+    # Definir un modelo gaussiano
+    gaussiano_init = models.Gaussian1D(amplitude=np.max(espectro_promedio), mean=np.argmax(espectro_promedio), stddev=1.0)
+
+    # Inicializar el ajuste
+    fitter = fitting.LevMarLSQFitter()
+
+    # Realizar el ajuste del modelo a los datos
+    gaussian_fit = fitter(gaussiano_init, x, espectro_promedio)
+
+    # Extraer los parámetros del ajuste
+    amplitude_opt = gaussian_fit.amplitude.value
+    mean_opt = gaussian_fit.mean.value
+    stddev_opt = gaussian_fit.stddev.value
+
+    # Graficar el espectro y el ajuste
+    plt.figure()
+    plt.plot(x, espectro_promedio, 'b', label='Espectro Promedio')
+    plt.plot(x, gaussian_fit(x), 'r', label='Ajuste Gaussiano')
+    plt.legend(loc='best')
+    plt.title('Ajuste Gaussiano del Espectro Promedio')
+    plt.xlabel('Índice del Píxel')
+    plt.ylabel('Intensidad')
+
     # Imprimir los parámetros del ajuste
     print(f'Amplitud óptima: {amplitude_opt}')
     print(f'Valor medio óptimo: {mean_opt}')
     print(f'Desviación estándar óptima: {stddev_opt}')
 
     plt.show()
+
+def ajuste_cuadrado(espectro_promedio):
+    # Crear un array con valores x para el ajuste
+    x = np.arange(len(espectro_promedio))
+
+    # Definir un modelo gaussiano
+    gaussiano_init = models.Gaussian1D(amplitude=np.max(espectro_promedio), mean=np.argmax(espectro_promedio), stddev=1.0)
+
+    # Inicializar el ajuste
+    fitter = fitting.LevMarLSQFitter()
+
+    # Realizar el ajuste del modelo a los datos
+    gaussian_fit = fitter(gaussiano_init, x, espectro_promedio)
+
+    # Extraer los parámetros del ajuste
+    amplitude_opt = gaussian_fit.amplitude.value
+    mean_opt = gaussian_fit.mean.value
+    stddev_opt = gaussian_fit.stddev.value
+
+    # Graficar el espectro y el ajuste
+    plt.figure()
+    plt.plot(x, espectro_promedio, 'b', label='Espectro Promedio')
+    plt.plot(x, gaussian_fit(x), 'r', label='Ajuste Gaussiano')
+    plt.legend(loc='best')
+    plt.title('Ajuste Gaussiano del Espectro Promedio')
+    plt.xlabel('Índice del Píxel')
+    plt.ylabel('Intensidad')
+
+    # Imprimir los parámetros del ajuste
+    print(f'Amplitud óptima: {amplitude_opt}')
+    print(f'Valor medio óptimo: {mean_opt}')
+    print(f'Desviación estándar óptima: {stddev_opt}')
+
+    plt.show()
+
+def ajuste_elipse(espectro_promedio):
+    # Crear un array con valores x para el ajuste
+    x = np.arange(len(espectro_promedio))
+
+    # Definir un modelo gaussiano
+    gaussiano_init = models.Gaussian1D(amplitude=np.max(espectro_promedio), mean=np.argmax(espectro_promedio), stddev=1.0)
+
+    # Inicializar el ajuste
+    fitter = fitting.LevMarLSQFitter()
+
+    # Realizar el ajuste del modelo a los datos
+    gaussian_fit = fitter(gaussiano_init, x, espectro_promedio)
+
+    # Extraer los parámetros del ajuste
+    amplitude_opt = gaussian_fit.amplitude.value
+    mean_opt = gaussian_fit.mean.value
+    stddev_opt = gaussian_fit.stddev.value
+
+    # Graficar el espectro y el ajuste
+    plt.figure()
+    plt.plot(x, espectro_promedio, 'b', label='Espectro Promedio')
+    plt.plot(x, gaussian_fit(x), 'r', label='Ajuste Gaussiano')
+    plt.legend(loc='best')
+    plt.title('Ajuste Gaussiano del Espectro Promedio')
+    plt.xlabel('Índice del Píxel')
+    plt.ylabel('Intensidad')
+
+    # Imprimir los parámetros del ajuste
+    print(f'Amplitud óptima: {amplitude_opt}')
+    print(f'Valor medio óptimo: {mean_opt}')
+    print(f'Desviación estándar óptima: {stddev_opt}')
+
+    plt.show()
+def ajuste_area_libre(espectros):
+    for i, espectro in enumerate(espectros):
+        # Crear un array con valores x para el ajuste
+        x = np.arange(len(espectro))
+
+        # Definir un modelo gaussiano
+        gaussiano_init = models.Gaussian1D(amplitude=np.max(espectro), mean=np.argmax(espectro), stddev=1.0)
+
+        # Inicializar el ajuste
+        fitter = fitting.LevMarLSQFitter()
+
+        # Realizar el ajuste del modelo a los datos
+        gaussian_fit = fitter(gaussiano_init, x, espectro)
+
+        # Extraer los parámetros del ajuste
+        amplitude_opt = gaussian_fit.amplitude.value
+        mean_opt = gaussian_fit.mean.value
+        stddev_opt = gaussian_fit.stddev.value
+
+        # Graficar el espectro y el ajuste
+        plt.figure()
+        plt.plot(x, espectro, 'b', label=f'Espectro del área libre {i + 1}')
+        plt.plot(x, gaussian_fit(x), 'r', label='Ajuste Gaussiano')
+        plt.legend(loc='best')
+        plt.title(f'Ajuste Gaussiano del Espectro del área libre {i + 1}')
+        plt.xlabel('Índice del Píxel')
+        plt.ylabel('Intensidad')
+
+        # Imprimir los parámetros del ajuste
+        print(f'Amplitud óptima: {amplitude_opt}')
+        print(f'Valor medio óptimo: {mean_opt}')
+        print(f'Desviación estándar óptima: {stddev_opt}')
+
+        plt.show()
+
+
+def ajustes_grafico():
+    global espectro, espectro_promedio, espectros_area_libre
+    if pixel_activado:
+        ajuste_gausiano(espectro)
+    elif circulo_activado:
+        ajuste_circulo(espectro_promedio)
+    elif cuadrado_activado:
+        ajuste_cuadrado(espectro_promedio)
+    elif eclipse_activado:
+        ajuste_elipse(espectro_promedio)
+    elif area_libre_activa:
+        ajuste_area_libre(espectros_area_libre)
 
 
 def comparar_graficos(x=None, y=None, ancho=None, alto=None, angulo=None):
