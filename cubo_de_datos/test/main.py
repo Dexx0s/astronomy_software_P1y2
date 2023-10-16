@@ -12,7 +12,7 @@ from datetime import datetime
 import matplotlib
 from astropy.modeling import models, fitting
 from matplotlib import pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 import os
 import uuid
 from matplotlib.patches import Circle, Ellipse, Rectangle
@@ -223,44 +223,69 @@ def cargar_imagen_desde_barra(event):
 
 # Función para crear una ventana emergente para el gráfico
 def crear_ventana_grafico():
-    global ventana_grafico, figura_grafico, axes_grafico, canvas_grafico, ventana_grafico_abierta
+    global ventana_grafico, figura_grafico, axes_grafico, canvas_grafico
+
     ventana_grafico = tk.Toplevel()
     ventana_grafico.title("Gráfico del Espectro")
+    # Crear un marco para el gráfico similar al segundo código que proporcionaste
+    marco_grafico = tk.Frame(ventana_grafico)
+    marco_grafico.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+    # Crear un gráfico de Matplotlib similar al segundo código que proporcionaste
     figura_grafico, axes_grafico = plt.subplots(figsize=(8, 5))
+    canvas_grafico = FigureCanvasTkAgg(figura_grafico, master=marco_grafico)
+    canvas_grafico.draw()
+    canvas_grafico.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
-    # Ubica el gráfico en la fila 0 y columna 0
-    canvas_grafico = FigureCanvasTkAgg(figura_grafico, master=ventana_grafico)
-    canvas_grafico.get_tk_widget().grid(row=0, column=0, padx=10, pady=10)
+    # Agregar la barra de herramientas de navegación de Matplotlib
+    toolbar = NavigationToolbar2Tk(canvas_grafico, marco_grafico)
+    toolbar.update()
+    canvas_grafico.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
-    # Agregar un cuadro de texto para ingresar comentarios
-    cuadro_comentarios = tk.Text(ventana_grafico, height=5, width=60)
-    cuadro_comentarios.grid(row=1, column=0, padx=10, pady=10)
+    # Crear un marco para los botones y la caja de comentarios
+    marco_botones_comentarios = tk.Frame(marco_grafico)
+    marco_botones_comentarios.pack(side=tk.TOP, fill=tk.BOTH)
 
-    # Inserta el texto inicial en el cuadro de comentarios
+    # Crear un cuadro de comentarios al final
+    cuadro_comentarios = tk.Text(marco_botones_comentarios, height=2, width=40)
+    cuadro_comentarios.pack(side=tk.TOP, fill=tk.BOTH)
     texto_inicial = "Escribe aquí tus comentarios..."
     cuadro_comentarios.insert("1.0", texto_inicial)
 
-    # Crear el botón de "Guardar" y ubicarlo a la derecha del gráfico
-    boton_guardar = tk.Button(ventana_grafico, text="Guardar", command=lambda: guardar_grafico(cuadro_comentarios))
-    boton_guardar.grid(row=0, column=1, padx=10, pady=10)  # Ubica el botón en la misma fila y columna 1 al lado derecho
+    def borrar_texto_inicial(event):
+        if cuadro_comentarios.get("1.0", "end-1c") == texto_inicial:
+            cuadro_comentarios.delete("1.0", "end-1c")
+            cuadro_comentarios.config(fg="black")  # Cambia el color del texto a negro
 
-    boton_guardar_mascara = tk.Button(ventana_grafico, text="Guardar mascara", command=lambda: guardar_ultima_area_libre_en_mongodb())
-    boton_guardar_mascara.grid(row=0, column=2, padx=10, pady=10)  # Ubica el botón en la misma fila y columna 1 al lado derecho
+    def restaurar_texto_inicial(event):
+        if cuadro_comentarios.get("1.0", "end-1c") == "":
+            cuadro_comentarios.insert("1.0", texto_inicial)
+            cuadro_comentarios.config(fg="grey")
 
-    # Crear el botón de "Ajuste gausiano" y asociarlo a la función de ajuste
-    boton_ajuste_gausiano = tk.Button(ventana_grafico, text="Ajuste gausiano",
-                                      command=lambda: ajustes_grafico())
-    boton_ajuste_gausiano.grid(row=0, column=3, padx=10, pady=10)  # Ajusta la ubicación del botón
+    # Asocia los eventos para borrar y restaurar el texto inicial
+    cuadro_comentarios.bind("<FocusIn>", borrar_texto_inicial)
+    cuadro_comentarios.bind("<FocusOut>", restaurar_texto_inicial)
 
-    ventana_grafico.button_salir = tk.Button(ventana_grafico, text="Salir", command=ventana_grafico.destroy)
-    ventana_grafico.button_salir.grid(row=2, column=0,
-                                      columnspan=2)  # Ubica el botón de salir en la fila 2 y columnas 0 y 1
-    ventana_grafico.protocol("WM_DELETE_WINDOW", ventana_grafico.button_salir.invoke)
+    # Botón de "Guardar"
+    boton_guardar = tk.Button(marco_botones_comentarios, text="Guardar",
+                              command=lambda: guardar_grafico(cuadro_comentarios),bg="#87CEEB", fg="black")
+    boton_guardar.pack(side=tk.LEFT, padx=5, pady=5)
+
+    # Botón de "Ajuste gausiano"
+    boton_ajuste_gausiano = tk.Button(marco_botones_comentarios, text="Ajuste gausiano",
+                                      command=lambda: ajustes_grafico(), bg="dim gray", fg="white")
+    boton_ajuste_gausiano.pack(side=tk.LEFT, padx=5, pady=5)
+
+    # Botón de "Guardar mascara"
+    boton_guardar_mascara = tk.Button(marco_botones_comentarios, text="Guardar mascara",
+                                      command=lambda: guardar_ultima_area_libre_en_mongodb(),bg="beige", fg="black")
+    boton_guardar_mascara.pack(side=tk.LEFT, padx=5, pady=5)
 
     ventanas_grafico.append(ventana_grafico)
 
     # Cuando ya no se necesite la figura, esta función la cierra
     plt.close(figura_grafico)
+
 
 
 def guardar_ultima_area_libre_en_mongodb():
