@@ -4,6 +4,7 @@ import numpy as np
 import tkinter as tk
 from tkinter import filedialog, messagebox, Toplevel, Menu, simpledialog
 
+
 from PIL import Image, ImageTk
 from scipy.optimize import optimize, curve_fit
 from astropy.io import fits
@@ -287,6 +288,64 @@ def crear_ventana_grafico():
     plt.close(figura_grafico)
 
 
+def crear_ventana_grafico_frecuencia():
+    global ventana_grafico_frecuencia, figura_grafico, axes_grafico, canvas_grafico
+
+    ventana_grafico_frecuencia = tk.Toplevel()
+    ventana_grafico_frecuencia.title("Gráfico del Espectro - Frecuencia")
+
+    # Crear un marco para el gráfico similar al código anterior
+    marco_grafico = tk.Frame(ventana_grafico_frecuencia)
+    marco_grafico.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+    # Crear un gráfico de Matplotlib similar al código que proporcionaste
+    figura_grafico, axes_grafico = plt.subplots(figsize=(8, 5))
+    canvas_grafico = FigureCanvasTkAgg(figura_grafico, master=marco_grafico)
+    canvas_grafico.draw()
+    canvas_grafico.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+
+    # Agregar la barra de herramientas de navegación de Matplotlib
+    toolbar = NavigationToolbar2Tk(canvas_grafico, marco_grafico)
+    toolbar.update()
+    canvas_grafico.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+
+    # Crear un marco para los botones y el cuadro de comentarios
+    marco_botones_comentarios = tk.Frame(marco_grafico)
+    marco_botones_comentarios.pack(side=tk.TOP, fill=tk.BOTH)
+
+    # Crear un cuadro de comentarios al final
+    cuadro_comentarios = tk.Text(marco_botones_comentarios, height=2, width=40)
+    cuadro_comentarios.pack(side=tk.TOP, fill=tk.BOTH)
+    texto_inicial = "Escribe aquí tus comentarios..."
+    cuadro_comentarios.insert("1.0", texto_inicial)
+
+    def borrar_texto_inicial(event):
+        if cuadro_comentarios.get("1.0", "end-1c") == texto_inicial:
+            cuadro_comentarios.delete("1.0", "end-1c")
+            cuadro_comentarios.config(fg="black")  # Cambia el color del texto a negro
+
+    def restaurar_texto_inicial(event):
+        if cuadro_comentarios.get("1.0", "end-1c") == "":
+            cuadro_comentarios.insert("1.0", texto_inicial)
+            cuadro_comentarios.config(fg="grey")
+
+    # Asocia los eventos para borrar y restaurar el texto inicial
+    cuadro_comentarios.bind("<FocusIn>", borrar_texto_inicial)
+    cuadro_comentarios.bind("<FocusOut>", restaurar_texto_inicial)
+
+    # Botón de "Guardar Gráfico"
+    boton_guardar_grafico = tk.Button(ventana_grafico_frecuencia, text="Guardar Gráfico",
+                                      command=lambda: guardar_grafico(cuadro_comentarios), bg="#87CEEB", fg="black")
+    boton_guardar_grafico.pack(side=tk.TOP, padx=5, pady=5)
+
+    # Botón de "Ajuste Gaussiano"
+    boton_ajuste_gaussiano = tk.Button(ventana_grafico_frecuencia, text="Ajuste Gaussiano",
+                                       command=lambda: ajuste_gaussiano_frecuencia(frecuencias,espectro),
+                                       bg="dim gray", fg="white")
+    boton_ajuste_gaussiano.pack(side=tk.TOP, padx=5, pady=5)
+
+    # Cuando ya no se necesite la figura, esta función la cierra
+    plt.close(figura_grafico)
 
 def guardar_ultima_area_libre_en_mongodb():
     global puntos_area_libre, mask_collection
@@ -307,6 +366,7 @@ def guardar_ultima_area_libre_en_mongodb():
             messagebox.showerror("Error", "Debes ingresar un nombre para la máscara.")
     else:
         messagebox.showerror("Error", "No hay puntos de área libre para guardar.")
+
 
 def guardar_grafico(cuadro_comentarios):
     global figura_grafico  # Asegúrate de que la figura sea global y accesible aquí
@@ -422,13 +482,13 @@ def abrir_archivo():
             # chequeo de datos NANs. No es necesario modificar pues
             # tkinter lidia bien con ellos
 
-            # if np.any(np.isnan(extension_valida.data)) or np.any(np.isinf(extension_valida.data)):
-            #     respuesta = messagebox.askquestion("Datos Inválidos",
-            #                                        "El archivo FITS contiene datos inválidos (NaN o infinitos). ¿Desea convertirlos a 0?")
+            if np.any(np.isnan(extension_valida.data)) or np.any(np.isinf(extension_valida.data)):
+                 respuesta = messagebox.askquestion("Datos Inválidos",
+                                                    "El archivo FITS contiene datos inválidos (NaN o infinitos). ¿Desea convertirlos a 0?")
 
-            #     if respuesta == 'yes':
-            #         data = remove_nans(extension_valida)
-            #         print("nans sacados")
+                 if respuesta == 'yes':
+                     data = remove_nans(extension_valida)
+                     print("nans sacados")
 
             header = extension_valida.header
             # Imprimir el encabezado para ver la información
@@ -793,6 +853,40 @@ def ajuste_area_libre(espectros):
 
         plt.show()
 
+def ajuste_gaussiano_frecuencia(frecuencias, espectro):
+    # Crear un array con valores x para el ajuste
+    x = frecuencias
+
+    # Definir un modelo gaussiano
+    gaussiano_init = models.Gaussian1D(amplitude=np.max(espectro), mean=np.argmax(espectro), stddev=1.0)
+
+    # Inicializar el ajuste
+    fitter = fitting.LevMarLSQFitter()
+
+    # Realizar el ajuste del modelo a los datos
+    gaussian_fit = fitter(gaussiano_init, x, espectro)
+
+    # Extraer los parámetros del ajuste
+    amplitude_opt = gaussian_fit.amplitude.value
+    mean_opt = gaussian_fit.mean.value
+    stddev_opt = gaussian_fit.stddev.value
+
+    # Graficar el espectro y el ajuste
+    plt.figure()
+    plt.plot(x, espectro, 'b', label='Espectro Promedio')
+    plt.plot(x, gaussian_fit(x), 'r', label='Ajuste Gaussiano')
+    plt.legend(loc='best')
+    plt.title('Ajuste Gaussiano del Espectro Promedio')
+    plt.xlabel('Frecuencia (GHz)')
+    plt.ylabel('Intensidad')
+
+    # Imprimir los parámetros del ajuste
+    print(f'Amplitud óptima: {amplitude_opt}')
+    print(f'Valor medio óptimo: {mean_opt}')
+    print(f'Desviación estándar óptima: {stddev_opt}')
+
+    plt.show()
+
 
 def ajustes_grafico():
     global espectro, espectro_promedio, espectros_area_libre
@@ -806,6 +900,58 @@ def ajustes_grafico():
         ajuste_elipse(espectro_promedio)
     elif area_libre_activa:
         ajuste_area_libre(espectros_area_libre)
+
+def graficar_con_frecuencia(hdul):
+    global frecuencias, espectro, figura_grafico, axes_grafico, ventana_grafico_abierta
+
+    ventana_grafico_abierta = False
+
+    if datos_cubo is not None and hdul is not None:
+        try:
+            espectro = datos_cubo.mean(axis=(1, 2))  # Espectro promedio de todos los píxeles
+
+            # Comprobar si los datos de espectro contienen valores no finitos
+            if np.any(np.isnan(espectro)) or np.any(np.isinf(espectro)):
+                messagebox.showerror("Error", "Los datos de espectro contienen valores no finitos.")
+            else:
+                # Obtener los valores del header FITS
+                header = hdul[0].header
+                crval3 = header['CRVAL3']
+                cdelt3 = header['CDELT3']
+
+                # Calcular las frecuencias correspondientes
+                frecuencias = crval3 + np.arange(len(espectro)) * cdelt3
+
+                # Comprobar si los datos de frecuencia contienen valores no finitos
+                if np.any(np.isnan(frecuencias)) or np.any(np.isinf(frecuencias)):
+                    messagebox.showerror("Error", "Los datos de frecuencia contienen valores no finitos.")
+                else:
+                    # Crear una nueva ventana para el gráfico
+                    crear_ventana_grafico_frecuencia()
+                    ventana_grafico_abierta = True
+
+                    # Crear una nueva línea para el gráfico con frecuencia en el eje X
+                    figura_grafico.clear()
+                    axes_grafico = figura_grafico.add_subplot(111)
+                    linea_grafico, = axes_grafico.plot(frecuencias, espectro, lw=2)
+
+                    # Establecer los límites de los ejes x e y
+                    min_freq = np.nanmin(frecuencias)
+                    max_freq = np.nanmax(frecuencias)
+                    max_spectro = np.nanmax(espectro)
+                    if not np.isnan(min_freq) and not np.isnan(max_freq) and not np.isnan(max_spectro):
+                        axes_grafico.set_xlim(min_freq, max_freq)
+                        axes_grafico.set_ylim(0, max_spectro)
+
+                    # Actualizar el título del gráfico
+                    axes_grafico.set_title('Espectro Promedio - Frecuencia')
+                    axes_grafico.set_xlabel('Frecuencia (GHz)')
+                    figura_grafico.canvas.draw()
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+
+def graficar_con_frecuencia_aux():
+    graficar_con_frecuencia(hdul)
 
 
 def comparar_graficos(x=None, y=None, ancho=None, alto=None, angulo=None):
@@ -1127,7 +1273,7 @@ def on_motion(event):
         elipse_seleccionada.center = x, y
     elif pixel_seleccionado is not None:
         tamaño_punto = 4  # El tamaño del punto
-        pixel_seleccionado.set_offsets([x, y])
+        #pixel_seleccionado.set_offsets([x, y])
     canvas.draw()
 
 
@@ -1879,6 +2025,11 @@ boton_graficar.pack(padx=5, pady=5)
 # Agregar el botón "Comparar Gráficos" al marco
 boton_comparar_graficos = tk.Button(marco, text="Comparar Gráficos", command=comparar_graficos, bg='#008000', fg='white')
 boton_comparar_graficos.pack(padx=5, pady=5)
+
+# Agregar el botón "Comparar Gráficos" al marco
+boton_graficarFrecuencia = tk.Button(marco, text="Grafico de frecuencia", command=graficar_con_frecuencia_aux, bg='#008000', fg='white')
+boton_graficarFrecuencia.pack(padx=5, pady=5)
+
 ##########################################################
 
 ### Marco y datos para lo relacionado lo de borrar figuras##################################################
