@@ -3,8 +3,6 @@ import matplotlib.patches as mpatches
 import numpy as np
 import tkinter as tk
 from tkinter import filedialog, messagebox, Toplevel, Menu, simpledialog
-
-
 from PIL import Image, ImageTk
 from scipy.optimize import optimize, curve_fit
 from astropy.io import fits
@@ -42,22 +40,18 @@ ventana_grafico = None  # Ventana para el gráfico
 ventana_grafico_abierta = False
 last_mouse_x = 0
 last_mouse_y = 0
+########################################################################################################################
+####################################### Activaciones movimientos/figuras ###############################################
+########################################################################################################################
 movimiento_activado = False  # Variable para rastrear el estado del movimiento
-
 pixel_seleccionado = None  # Variable para el pixel seleccionado
-
 pixel_activado = False  # Variable para rastrear el estado de la opción "Pixel"
-
 circulo_activado = False  # Variable para rastrear el estado de la opción "Círculo"
-
 eclipse_activado = False  # Variable para rastrear el estado del movimiento
-
-cuadrado_activado = False  # Variable para rastrear el estado de la opción "Pixel"
-area_activado = False  # Variable para rastrear el estado de la opción "Círculo"
+cuadrado_activado = False  # Variable para rastrear el estado de la opción "Cuadrado"
+area_activado = False  # Variable para rastrear el estado de la opción "Area"
 ultimo_clic = None
-
-# Variables para el seguimiento del arrastre del ratón
-dragging = False
+dragging = False  # Variables para el seguimiento del arrastre del ratón
 
 # Variables para la creación del área libre
 area_libre_activa = False
@@ -95,12 +89,12 @@ elipses_dibujadas = []  # Lista para almacenar los círculos dibujados
 dibujando_elipse = False
 elipse_seleccionada = None  # Variable para la elipse seleccionada
 
-# Variables para el circulo
+# Variables Circulo
 centro_x, centro_y = None, None
 dibujando_circulo = False
 circulo_dibujado = None
 
-# variables para cuadrado
+# Variables Cuadrado
 cuadrados_dibujados = []  # Lista para almacenar los cuadrados dibujados
 ultimo_cuadrado = None  # Variable para mantener un seguimiento del último cuadrado dibujado
 dibujando_cuadrado = False
@@ -108,11 +102,13 @@ cuadrado_seleccionado = None
 cuadrados_visibles = []  # Lista para almacenar los cuadrados visibles
 cuadrados_invisibles = []  # Lista para almacenar los cuadrados invisibles
 
-# Variables para el pixel
+# Variables Pixel
 ultimo_pixel = None
 pixeles_seleccionados = []
 pixeles_dibujados = []
 path_collections = []
+
+# Base de datos MongoDB
 # switch_pymongo=0
 # if switch_pymongo:
 cliente = pymongo.MongoClient("mongodb://localhost:27017/")
@@ -128,8 +124,11 @@ mask_collection = base_datos["masks"]
 
 ventanas_grafico = []
 
-
-# Función para cargar la imagen FITS actual
+########################################################################################################################
+########################################################################################################################
+# Función para cargar la imagen FITS actual #
+########################################################################################################################
+########################################################################################################################
 def cargar_imagen_actual():
     global imagen_actual
     ax.clear()
@@ -444,8 +443,11 @@ def remove_nans(extension_valida):
     extension_valida.data[np.isnan(extension_valida.data)] = 0
     extension_valida.data[np.isinf(extension_valida.data)] = 0
 
-
-# Función para cargar un archivo FITS
+########################################################################################################################
+########################################################################################################################
+# FUNCION ABRIR ARCHIVO #
+########################################################################################################################
+########################################################################################################################
 def abrir_archivo():
     global archivo_fits, hdul, datos_cubo, num_frames, boton_anterior, boton_siguiente, boton_graficar, boton_area_libre
 
@@ -545,8 +547,11 @@ def abrir_archivo():
         # Si no se selecciona un archivo FITS válido, deshabilita el botón "Graficar"
         boton_graficar.config(state=tk.DISABLED)
 
-
-# Función para graficar el espectro del píxel seleccionado
+########################################################################################################################
+########################################################################################################################
+# FUNCION GRAFICAR #
+########################################################################################################################
+########################################################################################################################
 def graficar(x=None, y=None, ancho=None, alto=None, angulo=None):
     global espectro, circulos_dibujados, datos_cubo, figura_grafico, axes_grafico, ventana_grafico_abierta, linea_grafico, espectro_promedio
     global linea_grafico, figura_grafico, axes_grafico, ventana_grafico, ventana_grafico_abierta, centro_y,centro_x,radio
@@ -681,6 +686,11 @@ def graficar(x=None, y=None, ancho=None, alto=None, angulo=None):
         except ValueError:
             messagebox.showerror("Error", "Por favor, ingresa coordenadas válidas.")
 
+########################################################################################################################
+########################################################################################################################
+# FUNCION AJUSTE GAUSIANNO #
+########################################################################################################################
+########################################################################################################################
 def ajuste_gausiano(espectro):
     global area_libre_activa, pixel_activado, cuadrado_activado, eclipse_activado
 
@@ -901,6 +911,12 @@ def ajustes_grafico():
     elif area_libre_activa:
         ajuste_area_libre(espectros_area_libre)
 
+
+########################################################################################################################
+########################################################################################################################
+# GRAFICO FRECUENCIAS #
+########################################################################################################################
+########################################################################################################################
 def graficar_con_frecuencia(hdul):
     global frecuencias, espectro, figura_grafico, axes_grafico, ventana_grafico_abierta
 
@@ -953,7 +969,11 @@ def graficar_con_frecuencia(hdul):
 def graficar_con_frecuencia_aux():
     graficar_con_frecuencia(hdul)
 
-
+########################################################################################################################
+########################################################################################################################
+# COMPARAR GRAFICOS #
+########################################################################################################################
+########################################################################################################################
 def comparar_graficos(x=None, y=None, ancho=None, alto=None, angulo=None):
     global circulos_dibujados, cuadrados_dibujados, elipses_dibujadas, datos_cubo, figura_grafico, axes_grafico, ventana_grafico_abierta, linea_grafico
     global ventana_grafico, ventanas_grafico
@@ -1196,8 +1216,14 @@ def on_image_click(event):
                         # Restablece las variables del cuadrado después de dibujarlo
                         centro_x, centro_y, lado = None, None, None
 
+########################################################################################################################
+########################################################################################################################
+# DIBUJAR FIGURAS #
+########################################################################################################################
+########################################################################################################################
 
-# Funcion para dibujar una elipse
+# FUNCION PARA DIBUJAR UNA ELIPSE #
+########################################################################################################################
 def dibujar_elipse(event):
     global eclipse_activado, ultima_elipse, figuras_dibujadas
     # Graficar
@@ -1219,7 +1245,8 @@ def dibujar_elipse(event):
         angulo_elipse = elipse.angle
     canvas.draw()
 
-
+# FUNCION PARA DIBUJAR UN CUADRADO #
+########################################################################################################################
 def dibujar_cuadrado(event):
     global cuadrado_activado, ultimo_cuadrado, figuras_dibujadas
 
@@ -1234,6 +1261,46 @@ def dibujar_cuadrado(event):
 
     canvas.draw()
 
+# FUNCION PARA DIBUJAR UN CIRCULO #
+########################################################################################################################
+def dibujar_circulo(event):
+    global radio, ultimo_circulo, figuras_dibujadas
+
+    if circulo_activado and event.xdata is not None and event.ydata is not None:
+        x, y = event.xdata, event.ydata
+        radio = 5  # Puedes ajustar el tamaño del círculo según tus preferencias
+        circulo = Circle((x, y), radio, color='#FFA500', fill=False)
+        ax.add_patch(circulo)
+
+        circulos_dibujados.append(circulo)  # Agrega el círculo a la lista de círculos dibujados
+        ultimo_circulo = circulo  # Actualiza el último círculo dibujado
+        figuras_dibujadas.append(('circulo', circulo))  # Añade el círculo a la lista de figuras dibujadas
+
+        # Parametros para la funcion graficar
+        centro_x, centro_y = circulo.center
+        radio_circulo = circulo.radius
+    canvas.draw()
+
+# FUNCION PARA DIBUJAR UN PIXEL #
+########################################################################################################################
+def dibujar_pixel(event):
+    global pixel_activado, ultimo_pixel, pixeles_seleccionados, pixeles_dibujados, figuras_dibujadas
+
+    if pixel_activado and event.xdata is not None and event.ydata is not None:
+        x, y = event.xdata, event.ydata
+        print(f"x: {x}, y: {y}")  # Agrega esta línea para imprimir las coordenadas
+        # Solo para que el punto sea visible segun el pixel seleccionado por el usuario
+        tamaño_punto = 0.5  # Tamaño del "píxel"
+        pixel = mpatches.Circle((x, y), tamaño_punto, color='red')
+        ax.add_patch(pixel)
+
+        pixeles_dibujados.append(pixel)
+        ultimo_pixel = pixel
+        figuras_dibujadas.append(('pixel', pixel))  # Añade el pixel y sus coordenadas a la lista de figuras dibujadas
+        # Agrega las coordenadas del pixel a la lista de pixeles seleccionados
+        pixeles_seleccionados.append((x, y))
+
+    canvas.draw()
 
 def on_press(event):
     global cuadrado_seleccionado, circulo_seleccionado, elipse_seleccionada, pixel_seleccionado
@@ -1283,47 +1350,6 @@ def on_release(event):
     circulo_seleccionado = None
     elipse_seleccionada = None
     pixel_seleccionado = None
-
-
-# Función para dibujar un círculo en el subplot de Matplotlib
-def dibujar_circulo(event):
-    global radio, ultimo_circulo, figuras_dibujadas
-
-    if circulo_activado and event.xdata is not None and event.ydata is not None:
-        x, y = event.xdata, event.ydata
-        radio = 5  # Puedes ajustar el tamaño del círculo según tus preferencias
-        circulo = Circle((x, y), radio, color='#FFA500', fill=False)
-        ax.add_patch(circulo)
-
-        circulos_dibujados.append(circulo)  # Agrega el círculo a la lista de círculos dibujados
-        ultimo_circulo = circulo  # Actualiza el último círculo dibujado
-        figuras_dibujadas.append(('circulo', circulo))  # Añade el círculo a la lista de figuras dibujadas
-
-        # Parametros para la funcion graficar
-        centro_x, centro_y = circulo.center
-        radio_circulo = circulo.radius
-    canvas.draw()
-
-
-def dibujar_pixel(event):
-    global pixel_activado, ultimo_pixel, pixeles_seleccionados, pixeles_dibujados, figuras_dibujadas
-
-    if pixel_activado and event.xdata is not None and event.ydata is not None:
-        x, y = event.xdata, event.ydata
-        print(f"x: {x}, y: {y}")  # Agrega esta línea para imprimir las coordenadas
-        # Solo para que el punto sea visible segun el pixel seleccionado por el usuario
-        tamaño_punto = 0.5  # Tamaño del "píxel"
-        pixel = mpatches.Circle((x, y), tamaño_punto, color='red')
-        ax.add_patch(pixel)
-
-        pixeles_dibujados.append(pixel)
-        ultimo_pixel = pixel
-        figuras_dibujadas.append(('pixel', pixel))  # Añade el pixel y sus coordenadas a la lista de figuras dibujadas
-        # Agrega las coordenadas del pixel a la lista de pixeles seleccionados
-        pixeles_seleccionados.append((x, y))
-
-    canvas.draw()
-
 
 def graficar_area_libre():
     global puntos, ventana_grafico_abierta, linea_grafico, espectros_area_libre
@@ -1591,7 +1617,8 @@ def cerrar_ventana_principal():
     ventana.quit()  # Finalizar el bucle principal de Tkinter
     ventana.destroy()  # Destruir la ventana principal
 
-
+# FUNCION PARA BORRAR TODAS LAS FIGURAS #
+########################################################################################################################
 def borrar_figuras():
     global cuadrados_dibujados, ultima_elipse, ultimo_circulo, ultimo_punto, pixeles_dibujados, pixeles_seleccionados, areas_libres
 
@@ -1634,7 +1661,8 @@ def borrar_figuras():
     canvas.draw()
 
 
-
+# FUNCION PARA BORRAR ULTIMA FIGURA #
+########################################################################################################################
 def borrar_ultima_figura():
     global ultimo_circulo, ultimo_cuadrado, ultima_elipse, ultimo_pixel
     if figuras_dibujadas:
@@ -1673,8 +1701,6 @@ def borrar_ultima_figura():
     canvas.draw()
 
 
-
-
 def botones_actualizados():
     if circulo_activado:
         boton_borrar_figuras.config(state=tk.NORMAL)
@@ -1689,7 +1715,8 @@ def botones_actualizados():
         boton_borrar_figuras.config(state=tk.NORMAL)
         boton_borrar_ultima_figura.config(state=tk.NORMAL)
 
-
+# MENU - TAMAÑO DE LA FIGURA - EQUIVALENTE - ALTO - ANCHO #
+########################################################################################################################
 def menu_tamano(opcion):
     global s_x, s_y
     if opcion == "Equivalente":
@@ -1706,7 +1733,8 @@ def menu_tamano(opcion):
     # Establecer un límite al valor del control deslizante
     t_escala.configure(from_=1, to=100, resolution=1)
 
-
+# FUNCION PARA MODIFICAR EL TAMAÑO DE LA FIGURA #
+########################################################################################################################
 def tamano_figura(val):
     global lado, s_x, s_y, ultima_elipse, ultimo_circulo, ultimo_cuadrado, relacion_aspecto_original
     tamano = float(val)
@@ -1782,8 +1810,14 @@ def tamano_figura(val):
                 # Establece el nuevo tamaño de la elipse
                 ultima_elipse.set_width(tamano * relacion_aspecto)
         canvas.draw()
+########################################################################################################################
+########################################################################################################################
+# FUNCION VER ENCABEZADO/GRAFICO/MASCARAS #
+########################################################################################################################
+########################################################################################################################
 
-
+# FUNCION PARA MOSTRAR EL HEADER O ENCABEZADO #
+########################################################################################################################
 def mostrar_encabezado():
     global hdul
     if hdul is None:
@@ -1812,7 +1846,8 @@ def actualizar_estado_menu():
     else:
         ver_menu.entryconfig("Ver Encabezado", state=tk.NORMAL)
 
-
+# FUNCION PARA MOSTRAR LOS GRAFICOS ALMACENADOS #
+########################################################################################################################
 def ver_graficos():
     # Obtener todos los nombres de los gráficos de la colección "Graphics"
     nombres_graficos = [info["nombre"] for info in graphics_collection.find({}, {"_id": 0, "nombre": 1})]
@@ -1891,6 +1926,8 @@ def ver_graficos():
     boton_ver = tk.Button(ventana_graficos, text="Ver Gráfico", command=mostrar_grafico_seleccionado)
     boton_ver.pack()
 
+# FUNCION PARA MOSTRAR LAS MASCARAS ALMACENADAS #
+########################################################################################################################
 def ver_mascaras():
     global mask_collection
 
@@ -1970,31 +2007,31 @@ def configurar_menu():
 
 
 
-
+########################################################################################################################
+# ELEMENTOS DE LA INTERFAZ BOTONES/SCROLLS/ETIQUETAS "
+########################################################################################################################
 ventana = tk.Tk()
 ventana.title("Cargar Archivos Fits")
 ventana.geometry("870x900")
 ventana.configure(bg='#E6F3FF')
 ventana.resizable(False, False)
-
 ventana.protocol("WM_DELETE_WINDOW", cerrar_ventana_principal)
-
-
-
+########################################################################################################################
+# ETIQUETA X #
 etiqueta_coord_x = tk.Label(ventana, text="Coordenada X:", bg='#E6F3FF')
 etiqueta_coord_x.grid(row=1, column=1, padx=5, pady=5, sticky="e")
 
 entrada_coord_x = tk.Entry(ventana, bd=2, relief="solid")
 entrada_coord_x.grid(row=1, column=2, padx=5, pady=5)
-
+# ETIQUETA Y #
 etiqueta_coord_y = tk.Label(ventana, text="Coordenada Y:", bg='#E6F3FF')
 etiqueta_coord_y.grid(row=1, column=3, padx=5, pady=5, sticky="e")
 
 entrada_coord_y = tk.Entry(ventana, bd=2, relief="solid")
 entrada_coord_y.grid(row=1, column=4, padx=5, pady=5)
 
-
-##entry para ir directamente a un frame
+########################################################################################################################
+# Entry para ir directamente a un frame #
 etiqueta_coord_z = tk.Label(ventana, text="imagen:", bg='#E6F3FF')
 etiqueta_coord_z.grid(row=2, column=0, padx=5, pady=5, sticky="e")
 
@@ -2004,15 +2041,17 @@ entrada_coord_z.grid(row=2, column=1, padx=5, pady=5)
 boton_frame = tk.Button(ventana, text="ir a imagen", command=cargar_imagen, bg='#808080', fg='white')
 boton_frame.grid(row=2, column=2, padx=5, pady=10)
 
-
+########################################################################################################################
+# GRAFICAR SEGUN COORDENADAS #
 boton_graficar_coordenadas = tk.Button(ventana, text="Graficar Coordenadas", command=graficar_coordenadas, bg='#808080', fg='white')
 boton_graficar_coordenadas.grid(row=1, column=0, padx=5, pady=5)
-
-# Crear un marco principal
+########################################################################################################################
+# CREAR MARCO PRINCIPAL #
 marco_principal = tk.Frame(ventana, bg="#808080", height=900, bd=2, relief="solid")
 marco_principal.grid(row=4, column=5, padx=5, pady=5)
-
-#### Marco y datos para lo relacionado con graficar las coordenadas#########################
+########################################################################################################################
+# MARCO: OPCIONES GRAFICAR: GRAFICAR/COMPARAR/GRAFICAR FRECUENCIAS #
+########################################################################################################################
 marco = tk.Frame(marco_principal, bg="#A9A9A9", width=200, height=100, bd=2, relief="solid")
 marco.grid(row=2, column=0, padx=10, pady=20)
 label_marco = tk.Label(marco, text="Opciones para graficar",bg="black", fg="white")
@@ -2029,36 +2068,42 @@ boton_comparar_graficos.pack(padx=5, pady=5)
 # Agregar el botón "Comparar Gráficos" al marco
 boton_graficarFrecuencia = tk.Button(marco, text="Grafico de frecuencia", command=graficar_con_frecuencia_aux, bg='#008000', fg='white')
 boton_graficarFrecuencia.pack(padx=5, pady=5)
+########################################################################################################################
+# MARCO: OPCIONES DE BORRAR/ BORRAR ULTIMMA FIGURA #
+########################################################################################################################
 
-##########################################################
-
-### Marco y datos para lo relacionado lo de borrar figuras##################################################
-
-# Crear un marco para las opciones de borrado
+# Crear un marco para las opciones de borrado #
 marco_borrado = tk.Frame(marco_principal, bg="#A9A9A9", width=200, height=100, bd=2, relief="solid")
 marco_borrado.grid(row=1, column=0, padx=10, pady=20)
 label_borrado = tk.Label(marco_borrado, text="Opciones de borrar",bg="black", fg="white")
 label_borrado.pack(fill='x')
 
+# BORRAR FIGURAS #
 boton_borrar_figuras = tk.Button(marco_borrado, text="Borrar Figuras", command=borrar_figuras, bg='#8B0000', fg='white')
 boton_borrar_figuras.pack(padx=5, pady=5)
 
-# Agregar el botón "Borrar Última Figura" al marco
+# BORRAR ULTIMA FIGURA #
 boton_borrar_ultima_figura = tk.Button(marco_borrado, text="Borrar Última Figura", command=borrar_ultima_figura, bg='#8B0000', fg='white')
 boton_borrar_ultima_figura.pack(padx=5, pady=5)
-############################################################################################################################
+########################################################################################################################
 # inicio en 0  para no tener errores
 entrada_coord_z.insert(0, "0")
 
+########################################################################################################################
+# SCROLL Y BOTONOS SIGUIENTE/ANTERIOR PARA ARCHIVO FITS #
+
+# BOTON ANTERIOR #
 boton_anterior = tk.Button(ventana, text="Anterior", command=cargar_imagen_anterior, state=tk.DISABLED, bg='#808080', fg='white')
 boton_anterior.grid(row=3, column=0, padx=5, pady=5)
 
+# BOTON SIGUIENTE #
 boton_siguiente = tk.Button(ventana, text="Siguiente", command=cargar_siguiente_imagen, state=tk.DISABLED, bg='#808080', fg='white')
 boton_siguiente.grid(row=3, column=4, padx=5, pady=5)
 
-# Crear una barra de desplazamiento horizontal
+# BARRA HORIZONTAL O SCROLL #
 barra_desplazamiento = tk.Scale(ventana, orient="horizontal", command=cargar_imagen_desde_barra, bg='#E6F3FF')
 barra_desplazamiento.grid(row=3, column=1, columnspan=3, padx=5, pady=5, sticky="ew")
+########################################################################################################################
 
 # Crear una figura de Matplotlib y canvas
 fig = Figure(figsize=(6, 6))
@@ -2136,7 +2181,10 @@ def cambiar_tipo_figura(event):
         canvas.get_tk_widget().unbind("<ButtonRelease-1>")
 
 
-#############################marco para lo de el menu combobox############################
+########################################################################################################################
+# MARCO: MENU DE OPCIONES: MOVIMIENTO/CUADRADO/PIXEL/CIRCULO/ELIPSE/AREALIBRE #
+########################################################################################################################
+
 # Crear un marco para las opciones de figura
 marco_figura = tk.Frame(marco_principal, bg="#A9A9A9", width=200, height=100, bd=2, relief="solid")
 marco_figura.grid(row=0, column=0, padx=10, pady=20)
@@ -2153,23 +2201,22 @@ combooptions.current(0)
 combooptions.bind("<<ComboboxSelected>>", cambiar_tipo_figura)
 configurar_menu()
 
-########################## marco para Menu Tamaño Figura ###################################
+########################################################################################################################
+# MARCO: TAMAÑO DE LA FIGURA #
+########################################################################################################################
 
 # Crear un marco para las opciones de tamaño de figura
 marco_tamano = tk.Frame(marco_principal, bg="#A9A9A9", width=200, height=100, bd=2, relief="solid")
 marco_tamano.grid(row=3, column=0, padx=10, pady=20)
 label_tamano = tk.Label(marco_tamano, text="Opciones de tamaño figura", bg="black", fg="white")
 label_tamano.pack(fill='x')
-
+    
 # Agregar el menú de opciones de tamaño al marco
 menu_figura = ttk.Combobox(marco_tamano, values=["Equivalente", "Alto", "Ancho"])
 menu_figura.pack(padx=5, pady=5)
 menu_figura.configure(state="readonly")
 menu_figura.current(0)
-
-###############################################################################################
-
-
+########################################################################################################################
 # Configurar el combobox para llamar a la función adecuada cuando cambie el valor
 menu_figura.bind("<<ComboboxSelected>>", lambda e: menu_tamano(menu_figura.get()))
 # Crear un control deslizante para cambiar el tamaño de las figuras
