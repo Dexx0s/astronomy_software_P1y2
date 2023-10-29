@@ -354,7 +354,11 @@ def guardar_ultima_area_libre_en_mongodb():
         # Utiliza un cuadro de diálogo para pedir el nombre de la máscara
         nombre_mascara = simpledialog.askstring("Nombre de la Máscara", "Ingresa un nombre para la máscara:")
 
-        if nombre_mascara is not None and nombre_mascara.strip() != "":
+        # Si el usuario presiona cancelar, no hace nada
+        if nombre_mascara is None:
+            return
+
+        if nombre_mascara.strip() != "":
             # Inserta las coordenadas en la colección con el nombre proporcionado
             data = {"nombre": nombre_mascara, "coordenadas": puntos_area_libre}
             mask_collection.insert_one(data)
@@ -372,8 +376,10 @@ def guardar_grafico(cuadro_comentarios):
 
     # Pide al usuario que ingrese un nombre para el gráfico
     nombre_grafico = simpledialog.askstring("Guardar Gráfico", "Ingresa un nombre para el gráfico:")
+
+    # Si el usuario presiona cancelar, no hace nada
     if nombre_grafico is None:
-        nombre_grafico = f"Gráfico {len(ventanas_grafico) + 1}"  # Nombre por defecto
+        return
 
     # Crear un objeto de bytes en memoria para guardar la imagen
     buf = io.BytesIO()
@@ -1498,13 +1504,14 @@ def abrir_menu_desplegable(event):
 
 
 def toggle_movimiento():
-    global movimiento_activado, pixel_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado
+    global movimiento_activado, pixel_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado, area_libre_activa
     movimiento_activado = not movimiento_activado
     pixel_activado = False
     circulo_activado = False
     eclipse_activado = False
     cuadrado_activado = False
     area_activado = False
+    area_libre_activa = False
     # Desconectar los eventos de arrastre si "Movimiento" está desactivado
     if movimiento_activado:
         canvas.get_tk_widget().bind("<ButtonPress-1>", iniciar_arrastre)
@@ -1518,49 +1525,53 @@ def toggle_movimiento():
 
 # Nueva función para cambiar el estado de la opción "Pixel"
 def toggle_pixel():
-    global pixel_activado, movimiento_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado
+    global pixel_activado, movimiento_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado, area_libre_activa
     pixel_activado = not pixel_activado
     movimiento_activado = False
     circulo_activado = False
     eclipse_activado = False
     cuadrado_activado = False
     area_activado = False
+    area_libre_activa = False
 
 
 # Nueva función para cambiar el estado de la opción "Círculo"
 def toggle_circulo():
-    global pixel_activado, movimiento_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado
+    global pixel_activado, movimiento_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado, area_libre_activa
     circulo_activado = not circulo_activado
     movimiento_activado = False
     pixel_activado = False
     eclipse_activado = False
     cuadrado_activado = False
     area_activado = False
+    area_libre_activa = False
     # Si desactivas la opción "Círculo", borra todos los círculos dibujados
     if not circulo_activado:
         borrar_figuras()
 
 
 def toggle_eclipse():
-    global pixel_activado, movimiento_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado
+    global pixel_activado, movimiento_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado, area_libre_activa
     eclipse_activado = not eclipse_activado
     movimiento_activado = False
     pixel_activado = False
     circulo_activado = False
     cuadrado_activado = False
     area_activado = False
+    area_libre_activa = False
     if not eclipse_activado:
         borrar_figuras()
 
 
 def toggle_cuadrado():
-    global cuadrado_activado, pixel_activado, movimiento_activado, circulo_activado, eclipse_activado, area_activado
+    global cuadrado_activado, pixel_activado, movimiento_activado, circulo_activado, eclipse_activado, area_activado, area_libre_activa
     cuadrado_activado = not cuadrado_activado
     movimiento_activado = False
     pixel_activado = False
     circulo_activado = False
     eclipse_activado = False
     area_activado = False
+    area_libre_activa = False
     # Si desactivas la opción "Cuadrado", borra todos los cuadrados dibujados
     if not cuadrado_activado:
         borrar_figuras()
@@ -2142,7 +2153,7 @@ canvas.mpl_connect('button_release_event', on_release)
 
 # combobox selector
 def cambiar_tipo_figura(event):
-    global movimiento_activado, pixel_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado
+    global movimiento_activado, pixel_activado, circulo_activado, eclipse_activado, cuadrado_activado, area_activado, area_libre_activa
     seleccion = combooptions.get()
 
     # Si la opción de área libre estaba activada, conecta los puntos antes de cambiar a la nueva opción
@@ -2165,12 +2176,16 @@ def cambiar_tipo_figura(event):
         canvas.get_tk_widget().bind("<ButtonRelease-1>", detener_arrastre)
     elif seleccion == "Pixel":
         pixel_activado = True
+        desactivar_area_libre()
     elif seleccion == "Circulo":
         circulo_activado = True
+        desactivar_area_libre()
     elif seleccion == "Elipse":
         eclipse_activado = True
+        desactivar_area_libre()
     elif seleccion == "Cuadrado":
         cuadrado_activado = True
+        desactivar_area_libre()
     elif seleccion == "Area Libre":
         alternar_area_libre()  # Llama a alternar_area_libre cuando se selecciona "Area Libre"
 
