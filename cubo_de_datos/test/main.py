@@ -1870,10 +1870,23 @@ def ver_graficos():
     # Crear una nueva ventana para mostrar la lista de nombres de gráficos
     ventana_graficos = tk.Toplevel()
     ventana_graficos.title("Lista de Gráficos")
+    ventana_graficos.geometry("390x230")
+    ventana_graficos.configure(bg='#E6F3FF', borderwidth=2)  # Color de fondo ventana
+    ventana_graficos.resizable(False, False)
 
     # Crear una lista desplegable para seleccionar los nombres de los gráficos
     lista_graficos = tk.Listbox(ventana_graficos)
-    lista_graficos.pack()
+    lista_graficos.config(width=60, height=10)
+    lista_graficos.grid(row=0, column=0)
+
+    # Crea un objeto Scrollbar
+    barra_desplazamiento = tk.Scrollbar(ventana_graficos, orient="vertical")
+    barra_desplazamiento.grid(row=0, column=1, sticky="nsew")
+
+    # Establece el scroll command del cuadro de texto
+    lista_graficos.config(yscrollcommand=barra_desplazamiento.set)
+    # Vincula el objeto Scrollbar al cuadro de texto
+    barra_desplazamiento.config(command=lista_graficos.yview)
 
     for nombre_grafico in nombres_graficos:
         lista_graficos.insert(tk.END, nombre_grafico)
@@ -1933,9 +1946,41 @@ def ver_graficos():
 
             messagebox.showinfo("Descargado", f"Imagen '{nombre_grafico}.png' descargada con éxito.")
 
+    def eliminar_grafico_seleccionado():
+        # Obtener la lista de nombres de gráficos
+        nombres_graficos = [info["nombre"] for info in graphics_collection.find({}, {"_id": 0, "nombre": 1})]
+
+        seleccion = lista_graficos.curselection()
+        if seleccion:
+            indice_seleccionado = seleccion[0]  # Obtener el índice de la selección
+            nombre_seleccionado = nombres_graficos[indice_seleccionado]
+
+            # Eliminar el gráfico seleccionado de la colección "Graphics"
+            graphics_collection.delete_one({"nombre": nombre_seleccionado})
+
+            # Eliminar el gráfico de la lista
+            lista_graficos.delete(indice_seleccionado)
+
+            # Actualizar la lista de nombres de gráficos
+            nombres_graficos = [info["nombre"] for info in graphics_collection.find({}, {"_id": 0, "nombre": 1})]
+
+            # Actualizar la lista
+            lista_graficos.delete(0, lista_graficos.size())
+            for nombre_grafico in nombres_graficos:
+                lista_graficos.insert(tk.END, nombre_grafico)
+
+            # messagebox.showinfo("Eliminado", f"Gráfico '{nombre_seleccionado}' eliminado con éxito.")
+
+
     # Agregar un botón para ver el gráfico seleccionado
     boton_ver = tk.Button(ventana_graficos, text="Ver Gráfico", command=mostrar_grafico_seleccionado)
-    boton_ver.pack()
+    boton_ver.config(bg="green", fg="white")
+    boton_ver.grid(row=1, column=0)
+
+    # Agregar un botón para eliminar el gráfico seleccionado
+    boton_eliminar = tk.Button(ventana_graficos, text="Eliminar", command=eliminar_grafico_seleccionado)
+    boton_eliminar.config(bg="red", fg="white")
+    boton_eliminar.grid(row=2, column=0)
 
 # FUNCION PARA MOSTRAR LAS MASCARAS ALMACENADAS #
 ########################################################################################################################
@@ -1948,10 +1993,25 @@ def ver_mascaras():
     # Crea una ventana emergente para mostrar los nombres de las máscaras
     ventana_mascaras = tk.Toplevel()
     ventana_mascaras.title("Máscaras Guardadas")
+    ventana_mascaras.geometry("390x230")
+    ventana_mascaras.configure(bg='#E6F3FF', borderwidth=2) #Color de fondo ventana
+    ventana_mascaras.resizable(False, False)
 
     # Crea un cuadro de texto para mostrar los nombres de las máscaras
     cuadro_mascaras = tk.Listbox(ventana_mascaras, selectmode=tk.SINGLE)
-    cuadro_mascaras.pack()
+    cuadro_mascaras.config(width=60, height=10)
+    cuadro_mascaras.grid(row=0, column=0)
+
+    # Crea un objeto Scrollbar
+    barra_desplazamiento = tk.Scrollbar(ventana_mascaras, orient="vertical")
+    barra_desplazamiento.grid(row=0, column=1, sticky="nsew")
+
+    # Establece el scroll command del cuadro de texto
+    cuadro_mascaras.config(yscrollcommand=barra_desplazamiento.set)
+    # Vincula el objeto Scrollbar al cuadro de texto
+    barra_desplazamiento.config(command=cuadro_mascaras.yview)
+
+    # cuadro_mascaras.place(anchor="center")
 
     # Crea una lista de máscaras junto con sus nombres
     lista_mascaras = []
@@ -1977,9 +2037,28 @@ def ver_mascaras():
                     messagebox.showinfo("Coordenadas de la Máscara",
                                         f"Coordenadas de la máscara '{nombre}': {coordenadas}")
 
+    def eliminar_mascara_seleccionada():
+        seleccion = cuadro_mascaras.curselection()  # Obtiene la máscara seleccionada
+        if seleccion:
+            indice_seleccionado = seleccion[0]
+            nombre_seleccionado = cuadro_mascaras.get(indice_seleccionado)  # Obtiene el nombre seleccionado
+            for nombre, mascara in lista_mascaras:
+                if nombre == nombre_seleccionado:
+                    # Elimina la máscara de la colección de máscaras
+                    mask_collection.delete_one({"nombre": nombre})
+                    # Elimina la máscara del cuadro de texto
+                    cuadro_mascaras.delete(indice_seleccionado)
+
     # Crea un botón para obtener las coordenadas de la máscara seleccionada
     boton_obtener_coordenadas = tk.Button(ventana_mascaras, text="Obtener Coordenadas", command=obtener_coordenadas_seleccionada)
-    boton_obtener_coordenadas.pack()
+    boton_obtener_coordenadas.config(bg="green", fg="white")
+    boton_obtener_coordenadas.grid(row=1, column=0)
+
+    # Crea un botón para eliminar la máscara seleccionada
+    boton_eliminar_mascara = tk.Button(ventana_mascaras, text="Eliminar", command=eliminar_mascara_seleccionada)
+    boton_eliminar_mascara.config(bg='red', fg="white")
+    boton_eliminar_mascara.grid(row=2, column=0)
+
 
 def dibujar_puntos_mascara(coordenadas, ax, canvas):
     # Convierte las coordenadas en listas separadas de X e Y
