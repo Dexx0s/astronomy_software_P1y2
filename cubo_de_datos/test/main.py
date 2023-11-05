@@ -545,6 +545,7 @@ def abrir_archivo():
                 data_collection.insert_one(data_info)
 
             actualizar_estado_menu()
+            borrar_figuras()
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo abrir el archivo FITS: {str(e)}")
             boton_graficar.config(state=tk.DISABLED)
