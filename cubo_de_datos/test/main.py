@@ -870,12 +870,18 @@ def ajuste_area_libre(espectros):
 
         plt.show()
 
+
 def ajuste_gaussiano_frecuencia(frecuencias, espectro):
     # Crear un array con valores x para el ajuste
     x = frecuencias
 
-    # Definir un modelo gaussiano
-    gaussiano_init = models.Gaussian1D(amplitude=np.max(espectro), mean=np.argmax(espectro), stddev=1.0)
+    # Valores iniciales para los parámetros del modelo gaussiano
+    amplitud_inicial = np.max(espectro)
+    media_inicial = np.mean(frecuencias)  # Media inicial basada en las frecuencias
+    desviacion_inicial = np.std(frecuencias)  # Desviación estándar inicial basada en las frecuencias
+
+    # Definir un modelo gaussiano con los valores iniciales
+    gaussiano_init = models.Gaussian1D(amplitude=amplitud_inicial, mean=media_inicial, stddev=desviacion_inicial)
 
     # Inicializar el ajuste
     fitter = fitting.LevMarLSQFitter()
@@ -903,8 +909,6 @@ def ajuste_gaussiano_frecuencia(frecuencias, espectro):
     print(f'Desviación estándar óptima: {stddev_opt}')
 
     plt.show()
-
-
 def ajustes_grafico():
     global espectro, espectro_promedio, espectros_area_libre
     if pixel_activado:
