@@ -491,12 +491,14 @@ def abrir_archivo():
             # tkinter lidia bien con ellos
 
             if np.any(np.isnan(extension_valida.data)) or np.any(np.isinf(extension_valida.data)):
-                 respuesta = messagebox.askquestion("Datos Inválidos",
-                                                    "El archivo FITS contiene datos inválidos (NaN o infinitos). ¿Desea convertirlos a 0?")
+                 respuesta = messagebox.askquestion("Datos Inválidos", "El archivo FITS contiene datos inválidos (NaN o infinitos). ¿Desea convertirlos a 0?")
 
                  if respuesta == 'yes':
                      data = remove_nans(extension_valida)
                      print("nans sacados")
+                 elif respuesta == 'no':
+                     print ("nans normales")
+
 
             header = extension_valida.header
             # Imprimir el encabezado para ver la información
@@ -507,43 +509,60 @@ def abrir_archivo():
                 datos_cubo = extension_valida.data
                 cargar_imagen_actual_2d()
             else:
-                datos_cubo = extension_valida.data
-                cargar_imagen_actual()
-                tipo_extension = extension_valida.name
-                fecha_actual = datetime.now()
-                num_frames, num_rows, num_columns = datos_cubo.shape
-                print(f"Número de cuadros: {num_frames}")
-                print(f"Número de filas: {num_rows}")
-                print(f"Número de columnas: {num_columns}")
-                # Habilitar los botones "Anterior" y "Siguiente"
-                boton_anterior.config(state=tk.NORMAL)
-                boton_siguiente.config(state=tk.NORMAL)
-                # Habilitar el botón "Graficar"
-                boton_graficar.config(state=tk.NORMAL)
-                actualizar_etiqueta_coordenadas()  # Agregado para actualizar coordenadas al cargar el archivo
-                actualizar_barra_desplazamiento()
+                respuesta_base = messagebox.askquestion("Base de datos","¿Desea subir el archivo a la base de datos?")
+                if respuesta_base == 'yes':
+                    datos_cubo = extension_valida.data
+                    cargar_imagen_actual()
+                    tipo_extension = extension_valida.name
+                    fecha_actual = datetime.now()
+                    num_frames, num_rows, num_columns = datos_cubo.shape
+                    print(f"Número de cuadros: {num_frames}")
+                    print(f"Número de filas: {num_rows}")
+                    print(f"Número de columnas: {num_columns}")
+                    # Habilitar los botones "Anterior" y "Siguiente"
+                    boton_anterior.config(state=tk.NORMAL)
+                    boton_siguiente.config(state=tk.NORMAL)
+                    # Habilitar el botón "Graficar"
+                    boton_graficar.config(state=tk.NORMAL)
+                    actualizar_etiqueta_coordenadas()  # Agregado para actualizar coordenadas al cargar el archivo
+                    actualizar_barra_desplazamiento()
 
-            # if switch_pymongo:
-                # Base de datos = File_Collection
-                file_info = {
-                    "Data_id": data_id,  # Identificador
-                    "File_name": nombre_archivo,  # File
-                    "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
-                    "Hora": fecha_actual.strftime("%H:%M:%S")  # Fecha segun Hora
-                }
-                file_collection.insert_one(file_info)
+                # if switch_pymongo:
+                    # Base de datos = File_Collection
+                    file_info = {
+                        "Data_id": data_id,  # Identificador
+                        "File_name": nombre_archivo,  # File
+                        "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
+                        "Hora": fecha_actual.strftime("%H:%M:%S")  # Fecha segun Hora
+                    }
+                    file_collection.insert_one(file_info)
 
-                # Base de datos = Data_Collection
-                data_info = {
-                    "Data_id": data_id,  # Identificador
-                    "Filename": nombre_archivo,  # File
-                    "Header": tipo_extension,  # Encabezado
-                    "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
-                    "Hora": fecha_actual.strftime("%H:%M:%S"),  # Fecha segun Hora
-                    "Data": str(datos_cubo)  # Datos
-                }
-                data_collection.insert_one(data_info)
-
+                    # Base de datos = Data_Collection
+                    data_info = {
+                        "Data_id": data_id,  # Identificador
+                        "Filename": nombre_archivo,  # File
+                        "Header": tipo_extension,  # Encabezado
+                        "Fecha": fecha_actual.strftime("%d/%m/%Y"),  # Fecha segun día/mes/año
+                        "Hora": fecha_actual.strftime("%H:%M:%S"),  # Fecha segun Hora
+                        "Data": str(datos_cubo)  # Datos
+                    }
+                    data_collection.insert_one(data_info)
+                elif respuesta_base == 'no':
+                    datos_cubo = extension_valida.data
+                    cargar_imagen_actual()
+                    tipo_extension = extension_valida.name
+                    fecha_actual = datetime.now()
+                    num_frames, num_rows, num_columns = datos_cubo.shape
+                    print(f"Número de cuadros: {num_frames}")
+                    print(f"Número de filas: {num_rows}")
+                    print(f"Número de columnas: {num_columns}")
+                    # Habilitar los botones "Anterior" y "Siguiente"
+                    boton_anterior.config(state=tk.NORMAL)
+                    boton_siguiente.config(state=tk.NORMAL)
+                    # Habilitar el botón "Graficar"
+                    boton_graficar.config(state=tk.NORMAL)
+                    actualizar_etiqueta_coordenadas()  # Agregado para actualizar coordenadas al cargar el archivo
+                    actualizar_barra_desplazamiento()
             actualizar_estado_menu()
             borrar_figuras()
         except Exception as e:
